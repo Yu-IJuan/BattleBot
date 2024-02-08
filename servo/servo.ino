@@ -6,13 +6,13 @@ void setup() {
 
 void loop() {
   moving(0);
-  delay(1000);
+  delay(500);
 
   moving(90);
-  delay(1000);
+  delay(500);
 
   moving(180);
-  delay(1000);
+  delay(500);
 }
 
 void moving(int angle) {
