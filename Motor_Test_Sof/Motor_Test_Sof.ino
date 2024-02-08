@@ -10,7 +10,7 @@ int Grab = 11;
 
 unsigned long time = 0, duration = 0, distance = 0, RGB_TIME;
 
-int LED_COUNT = 4, BRIGHTNESS = 255;
+int LED_COUNT = 4;
 
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
 
