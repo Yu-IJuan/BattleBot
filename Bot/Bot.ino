@@ -19,9 +19,11 @@ const int D5 = A4, D6 = A5, D7 = A6, D8 = A7; //For IR B&W Sensor
 const int LED_COUNT = 4;                //NeoPixel's LED count
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
                                         //NeoPixel's LED init setting
+DHT11 dht11(2);                         //DHT's PIN
+int       temp, humid;
 
-unsigned long currenttime;                   //For millis() functions
-unsigned long duration, distance;     //For Ultrasonic functions
+unsigned long currenttime;              //For millis() functions
+unsigned long duration, distance;       //For Ultrasonic functions
 
 void setup() {
   // put your setup code here, to run once:
@@ -38,6 +40,8 @@ void setup() {
   pinMode(echo,     INPUT);
 
   pinMode(Grab,     OUTPUT);
+
+  dht11.readTemperatureHumidity(temp, humid);
 }
 
 void loop() {
