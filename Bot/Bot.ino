@@ -20,7 +20,7 @@ const int LED_COUNT = 4;                //NeoPixel's LED count
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
                                         //NeoPixel's LED init setting
 DHT11 dht11(2);                         //DHT's PIN
-int       temp, humid;
+int       temp;                         //For recording Temp
 
 unsigned long currenttime;              //For millis() functions
 unsigned long duration, distance;       //For Ultrasonic functions
@@ -41,10 +41,20 @@ void setup() {
 
   pinMode(Grab,     OUTPUT);
 
-  dht11.readTemperatureHumidity(temp, humid);
+  temp = dht11.readTemperature();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
+}
+
+void ultrasonic(){
+  digitalWrite(trig, LOW);
+  delay(5);
+  digitalWrite(trig, HIGH);
+  delay(10);
+  digitalWrite(trig, LOW);
+  duration = pulseIn(echo, HIGH);
+  distance = duration * (0.0331 + 0.6 * temp) /2;
 }
