@@ -40,6 +40,7 @@ void loop() {
   if (!state) {
       if (millis() - 500 >= currenttime){
         currenttime = millis();
+        ultras
     }
   }
 }
