@@ -86,7 +86,7 @@ void Red() {
   moving(180);
 
   Serial.println("Dir detect complete");
-  delay(5000);
+  delay(4000);
   state = false;
 }
 

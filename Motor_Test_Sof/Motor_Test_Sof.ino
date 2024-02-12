@@ -1,4 +1,4 @@
-#include <Adafruit_NeoPixel.h>
+  
 
 int MOTOR_A1 = 5, MOTOR_A2 = 4; //Right Motor
 int MOTOR_B1 = 3, MOTOR_B2 = 2; //Left Motor
@@ -10,7 +10,7 @@ int Grab = 11;
 
 unsigned long time = 0, duration = 0, distance = 0, RGB_TIME;
 
-int LED_COUNT = 4;
+int LED_COUNT = 4, BRIGHTNESS = 255;
 
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
 
