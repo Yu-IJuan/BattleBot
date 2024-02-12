@@ -57,7 +57,7 @@ void ultrasonic() {
 }
 
 void moving(int angle) {
-  int pulseWidth = map(angle, 0, 180, 490, 2500);
+  int pulseWidth = map(angle, 0, 180, 450, 2500);
 
   digitalWrite(Servomot, HIGH);
   delayMicroseconds(pulseWidth);
