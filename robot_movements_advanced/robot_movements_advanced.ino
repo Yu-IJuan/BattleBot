@@ -16,7 +16,7 @@ const int D5 = A4, D6 = A5, D7 = A6, D8 = A7; //For IR B&W Sensor
 unsigned int counterL, counterR;
 
 const int diskslot = 20;
-const float = 6.52;
+const float dia = 6.52;
 
 const int LED_COUNT = 4;                //NeoPixel's LED count
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
@@ -46,19 +46,19 @@ void loop() {
   analogWrite(Mot_A2, 255);
   analogWrite(Mot_B1, 255);
   analogWrite(Mot_B2, 0);
-  //  Moving backward
-  analogWrite(Mot_A1, 255);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
-  analogWrite(Mot_B2, 255);
-  //  Moving right
-  analogWrite(Mot_A1, 255);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 255);
-  analogWrite(Mot_B2, 0);
-  //  Moving left
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_A2, 255);
-  analogWrite(Mot_B1, 0);
-  analogWrite(Mot_B2, 255);
-}
+//  //  Moving backward
+//  analogWrite(Mot_A1, 255);
+//  analogWrite(Mot_A2, 0);
+//  analogWrite(Mot_B1, 0);
+//  analogWrite(Mot_B2, 255);
+//  //  Moving right
+//  analogWrite(Mot_A1, 255);
+//  analogWrite(Mot_A2, 0);
+//  analogWrite(Mot_B1, 255);
+//  analogWrite(Mot_B2, 0);
+//  //  Moving left
+//  analogWrite(Mot_A1, 0);
+//  analogWrite(Mot_A2, 255);
+//  analogWrite(Mot_B1, 0);
+//  analogWrite(Mot_B2, 255);
+//}
