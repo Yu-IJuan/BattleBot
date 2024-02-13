@@ -8,7 +8,6 @@ int LED_COUNT = 4, BRIGHTNESS = 255;
 bool state = false;
 unsigned int counterL, counterR;
 Adafruit_NeoPixel strip(LED_COUNT, Neo, NEO_GRB + NEO_KHZ800);
-int haha;
 void setup() {
   pinMode(trig, OUTPUT);
   pinMode(8, INPUT);
@@ -23,7 +22,7 @@ void setup() {
 }
 
 void loop() {
-  if (distance1 < 20 && distance2 > 20 && distance3 > 20) {
+  if (distance1 < 20 || distanceL > 20 && distanceR > 20) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
@@ -31,7 +30,7 @@ void loop() {
     Serial.println("Stop");
     Red();
   }
-  else if (distance > 20 && distance1 < 20 && distance2 < 20) {
+  else if (distance1 > 20 && distanceL < 20 && distanceR < 20) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 255);
     analogWrite(Mot_B1, 255);
@@ -80,6 +79,9 @@ void ultrasonic(int number) {
   }
   else if (number == 3) {
     distanceR = distance;
+  }
+  else{
+    distance1 = distance;
   }
 }
 
