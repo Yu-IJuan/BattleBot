@@ -1,9 +1,9 @@
 #include <Adafruit_NeoPixel.h>
 
-int trig = 12, echo = 8, Servomot = 10, Mot_A1 = 9, Mot_A2 = 6, Mot_B1 = 5, Mot_B2 = 3;
+int trig = 12, echo, Servomot = 10, Mot_A1 = 9, Mot_A2 = 6, Mot_B1 = 5, Mot_B2 = 3;
 const int Neo = 7;
 unsigned long currenttime, duration, sensetime;
-int distance, distance1, distance2;
+int distance, distance1, distance2, distance3;
 int LED_COUNT = 4, BRIGHTNESS = 255;
 bool state = false;
 unsigned int counterL, counterR;
@@ -60,7 +60,7 @@ int ultrasonic(int number) {
   else if (number == 2) {
     int echo = 7;
   }
-  else (number == 3) {
+  else {
     int echo = 13;
   }
   digitalWrite(trig, LOW);
@@ -82,7 +82,7 @@ int moving(int angle) {
   delayMicroseconds(pulseWidth);
   digitalWrite(Servomot, LOW);
   delay(125);
-  ultrasonic();
+  ultrasonic(1);
   //  return distance;
   delay(200);
 }
