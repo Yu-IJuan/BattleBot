@@ -1,9 +1,9 @@
 #include <Adafruit_NeoPixel.h>
 
-int trig = 12, echo = 8, Servomot = 10, Mot_A1 = 9, Mot_A2 = 6, Mot_B1 = 5, Mot_B2 = 3;
+int trig = 12, Servomot = 10, Mot_A1 = 9, Mot_A2 = 6, Mot_B1 = 5, Mot_B2 = 3, echo;
 const int Neo = 7;
 unsigned long currenttime, duration, sensetime;
-int distance, distance1, distance2;
+int distance, distance1, distance2, distance3, distanceR, distanceL;
 int LED_COUNT = 4, BRIGHTNESS = 255;
 bool state = false;
 unsigned int counterL, counterR;
@@ -23,7 +23,7 @@ void setup() {
 }
 
 void loop() {
-  if (distance < 20 && distance1 > 20 && distance2 > 20) {
+  if (distance1 < 20 && distance2 > 20 && distance3 > 20) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
@@ -53,15 +53,15 @@ void loop() {
   }
 }
 
-int ultrasonic(int number) {
+void ultrasonic(int number) {
   if (number == 1) {
-    int echo = 8;
+    echo = 8;
   }
-  else if (number == 2) {
-    int echo = 7;
+  else if (number == 2) { //L
+    echo = 7;
   }
-  else (number == 3) {
-    int echo = 13;
+  else { //R
+    echo = 13;
   }
   digitalWrite(trig, LOW);
   delay(5);
@@ -72,7 +72,15 @@ int ultrasonic(int number) {
   distance = duration * 0.034 / 2;
   Serial.print("Distance:");
   Serial.println(distance);
+  Serial.print("Echo:");
+  Serial.println(echo);
   //  return distance;
+  if (number == 2) {
+    distanceL = distance;
+  }
+  else if (number == 3) {
+    distanceR = distance;
+  }
 }
 
 int moving(int angle) {
@@ -82,7 +90,7 @@ int moving(int angle) {
   delayMicroseconds(pulseWidth);
   digitalWrite(Servomot, LOW);
   delay(125);
-  ultrasonic();
+  ultrasonic(1);
   //  return distance;
   delay(200);
 }
@@ -117,11 +125,11 @@ void Red() {
     state = false;
 
     Serial.print("DistanceR: ");
-    Serial.println( distance1);
+    Serial.println(distance1);
     Serial.print("DistanceF: ");
-    Serial.println( distance2);
+    Serial.println(distance2);
     Serial.print("DistanceL: ");
-    Serial.println( distance3);
+    Serial.println(distance3);
 
     moving(90);
     delay(2000);
@@ -156,7 +164,7 @@ void Red() {
     analogWrite(Mot_B1, 250);
     analogWrite(Mot_B2, 0);
   }
-  else if ( distance1 > 10) {
+  else if (distance1 > 10) {
     analogWrite(Mot_A1, 255);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 255);
