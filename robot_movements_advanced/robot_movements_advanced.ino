@@ -1,3 +1,5 @@
+#include <DHT11.h>
+
 //PIN (Digital)
 const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
 const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
@@ -24,7 +26,7 @@ void setup() {
   // put your setup code here, to run once:
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
-  Serial.begin(115200);
+  Serial.begin(9600);
 }
 
 void ISR_R() {
@@ -42,11 +44,13 @@ void loop() {
   //   Serial.println("Backward");
   //   backward(25);
   //   delay(1000);
-  Serial.println("Left");
-  left();
+  // Serial.println("Left");
+  // left();
+  // delay(3000);
+  Serial.println("Right");
+  right();
   delay(3000);
-  // Serial.println("Right");
-  // right();
+  // uturn();
   // delay(3000);
 
 
@@ -119,49 +123,80 @@ void backward(int steps) {
   counterR = 0;
 }
 
-void right() {
-  // counterL = 0;
-  // counterR = 0;
-  // while (steps > counterR && steps > counterL) {
-  //   if (steps > counterR) {
-  //     analogWrite(Mot_A1, 249);
-  //     analogWrite(Mot_A2, 0);
-  //   } else {
-  //     analogWrite(Mot_A1, 0);
-  //     analogWrite(Mot_A2, 0);
-  //   }
-  //   if (steps > counterL) {
-  //     analogWrite(Mot_B1, 0);
-  //     analogWrite(Mot_B2, 255);
-  //   } else {
-  //     analogWrite(Mot_B1, 0);
-  //     analogWrite(Mot_B2, 0);
-  //   }
-  //   Serial.println(counterL);
-  //   Serial.println(counterR);
-  // }
-  // analogWrite(Mot_A1, 0);
-  // analogWrite(Mot_A2, 0);
-  // analogWrite(Mot_B1, 0);
-  // analogWrite(Mot_B2, 0);
-  // counterL = 0;
-  // counterR = 0;
-}
-
 void left() {
   int steps = 8;
   counterL = 0;
   counterR = 0;
-  while (steps > counterR && steps - 1 > counterL) {
+  while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
-      analogWrite(Mot_A1, 255);
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 225);
+    } else {
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 0);
+    }
+    if (steps > counterL) {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 230);
+    } else {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 0);
+    }
+    Serial.println(counterL);
+    Serial.println(counterR);
+  }
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
+  counterL = 0;
+  counterR = 0;
+}
+
+void right() {
+  int steps = 8;
+  counterL = 0;
+  counterR = 0;
+  while (steps > counterR || steps > counterL) {
+    if (steps > counterR) {
+      analogWrite(Mot_A1, 225);
       analogWrite(Mot_A2, 0);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
-    if (steps -1 > counterL) {
-      analogWrite(Mot_B1, 255);
+    if (steps > counterL) {
+      analogWrite(Mot_B1, 225);
+      analogWrite(Mot_B2, 0);
+    } else {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 0);
+    }
+    Serial.println(counterL);
+    Serial.println(counterR);
+  }
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
+  counterL = 0;
+  counterR = 0;
+}
+
+void uturn() {
+  int steps = 17;
+  counterL = 0;
+  counterR = 0;
+  while (steps > counterR || steps -1 > counterL) {
+    if (steps > counterR) {
+      analogWrite(Mot_A1, 220);
+      analogWrite(Mot_A2, 0);
+    } else {
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 0);
+    }
+    if (steps -1> counterL) {
+      analogWrite(Mot_B1, 220);
       analogWrite(Mot_B2, 0);
     } else {
       analogWrite(Mot_B1, 0);
