@@ -213,35 +213,6 @@ void forward(int stepsR, int stepsL) {
   counterR = 0;
 }
 
-void backward(int steps) {
-  counterL = 0;
-  counterR = 0;
-  while (steps > counterR && steps > counterL) {
-    if (steps > counterR) {
-      analogWrite(Mot_A1, 249);
-      analogWrite(Mot_A2, 0);
-    } else {
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 0);
-    }
-    if (steps > counterL) {
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 255);
-    } else {
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 0);
-    }
-    Serial.println(counterL);
-    Serial.println(counterR);
-  }
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
-  analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
-}
-
 void left() {
   int steps = 8;
   counterL = 0;
