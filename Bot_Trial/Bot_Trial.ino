@@ -119,13 +119,19 @@ void loop() {
 
   if (distanceL > 40) {
     Serial.println("Left");
-    u8g2.setCursor(100, 40);
+    u8g2.setCursor(100, 15);
     u8g2.print("L");
-    u8g2.sendBuffer();
+    u8g2.setFont(u8g2_font_squeezed_r6_tr);
+    u8g2.setCursor(96, 25);
+    u8g2.print("Turn");
+    u8g2.setFont(u8g2_font_8x13O_tr);
     left();                             //90 Degrees turn if left empty
     forward(24, 24);
+    delay(300);
   }  
   else if (distanceF > 40) {            //Forward if front empty
+  u8g2.setCursor(34, 57);
+  u8g2.print("Forward");
     if (distanceL + distanceR <= 70) {  //Check if in dual wall, calibrate purpose.
       float distadjL = distanceL / 10;        
       int distroundL = distadjL;        //Bascially just comparing L/R distance in 2nd digit of CM,
@@ -151,22 +157,28 @@ void loop() {
         Serial.println("Forward");
         forward(8, 8);                  //In center then walk straight
       }
-    delay(1000);
   } else if (distanceR > 40){
     Serial.println("Right");
-    u8g2.setCursor(100, 40);
+    u8g2.setCursor(100, 15);
     u8g2.print("R");
-    u8g2.sendBuffer();
+    u8g2.setFont(u8g2_font_squeezed_r6_tr);
+    u8g2.setCursor(96, 25);
+    u8g2.print("Turn");
+    u8g2.setFont(u8g2_font_8x13O_tr);
     right();                            //90 Degrees turn if right empty
     forward(24, 24);
+    delay(300);
   }
   else {
     Serial.println("U-Turn");
-    u8g2.setCursor(100, 40);
+    u8g2.setCursor(100, 15);
     u8g2.print("U");
-    u8g2.sendBuffer();
+    u8g2.setFont(u8g2_font_squeezed_r6_tr);
+    u8g2.setCursor(96, 25);
+    u8g2.print("Turn");
+    u8g2.setFont(u8g2_font_8x13O_tr);
     uturn();                            //U-Turn if no route available
-    delay(1000);
+    delay(300);
   }
 }
 
@@ -187,6 +199,7 @@ void ultrasonic(int echo) {
 void forward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
+  u8g2.sendBuffer();
   while (stepsR > counterR || stepsL > counterL) {
     if (stepsR > counterR) {
       analogWrite(Mot_A1, 0);
@@ -217,6 +230,11 @@ void left() {
   int steps = 8;
   counterL = 0;
   counterR = 0;
+  u8g2.setCursor(30, 55);
+  u8g2.print("Steps:");
+  u8g2.setCursor(90, 55);
+  u8g2.print(steps);
+  u8g2.sendBuffer();
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 0);
@@ -232,8 +250,6 @@ void left() {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
     }
-    Serial.println(counterL);
-    Serial.println(counterR);
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -247,6 +263,11 @@ void right() {
   int steps = 8;
   counterL = 0;
   counterR = 0;
+  u8g2.setCursor(30, 55);
+  u8g2.print("Steps:");
+  u8g2.setCursor(90, 55);
+  u8g2.print(steps);
+  u8g2.sendBuffer();
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 225);
@@ -262,8 +283,6 @@ void right() {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
     }
-    Serial.println(counterL);
-    Serial.println(counterR);
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -277,6 +296,11 @@ void uturn() {
   int steps = 17;
   counterL = 0;
   counterR = 0;
+  u8g2.setCursor(30, 55);
+  u8g2.print("Steps:");
+  u8g2.setCursor(90, 55);
+  u8g2.print(steps);
+  u8g2.sendBuffer();
   while (steps > counterR || steps -1 > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 220);
@@ -292,8 +316,6 @@ void uturn() {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
     }
-    Serial.println(counterL);
-    Serial.println(counterR);
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
