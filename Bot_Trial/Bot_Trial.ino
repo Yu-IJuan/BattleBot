@@ -70,9 +70,6 @@ void ISR_L() {
 }
 
 void loop() {
-  if (millis() > currenttime) {
-    Serial.println("=========TIMED CHECK=========");
-    currenttime = millis() + 500;
     ultrasonic(13);
     distanceR = distance;
     ultrasonic(8);                      //Checking with different ultrasonic sensors,
@@ -85,8 +82,6 @@ void loop() {
     Serial.println(distanceF);
     Serial.print("DiatanceL:");
     Serial.println(distanceL);
-    Serial.println("=========END Of TIMED CHECK==========");
-  }
 
   if (millis() >= refreshtime) {
     refreshtime = millis() + 1000;
@@ -125,9 +120,17 @@ void loop() {
     u8g2.setCursor(96, 25);
     u8g2.print("Turn");
     u8g2.setFont(u8g2_font_8x13O_tr);
-    left();                             //90 Degrees turn if left empty
-    forward(24, 24);
-    delay(300);
+    if(distanceF > 20){
+      forward(5,5);
+      delay(1000);
+    } else {
+      forward(2,2);
+      delay(1000);
+    }
+    left(90);                             //90 Degrees turn if left empty
+    delay(1000);
+    forward(23, 23);
+    delay(1000);
   }  
   else if (distanceF > 40) {            //Forward if front empty
   u8g2.setCursor(34, 57);
@@ -140,22 +143,26 @@ void loop() {
       if (distroundR > distroundL) {
         stateL = true;
         Serial.println("R>L");
-        forward(4, 3);
+        forward(abs(map(distroundL - distroundR, 1, 3, 24, 20)), 25);
+        delay(1000);
       } else if (distroundR < distroundL) {
         stateR = true;
         Serial.println("L>R");
-        forward(3, 4);                  //Make calibration to the direction
+        forward(25, abs(map(distroundL - distroundR, 1, 3, 24, 20)));                  //Make calibration to the direction
+        delay(1000);
       } else {
         stateR = false;
         stateL = false;
         Serial.println("Forward");
-        forward(8, 8);                  //In center then walk straight
+        forward(25, 25);                  //In center then walk straight
+        delay(1000);
       }
     } else {
         stateR = false;
         stateL = false;
         Serial.println("Forward");
-        forward(8, 8);                  //In center then walk straight
+        forward(25, 25);                  //In center then walk straight
+        delay(1000);
       }
   } else if (distanceR > 40){
     Serial.println("Right");
@@ -165,9 +172,9 @@ void loop() {
     u8g2.setCursor(96, 25);
     u8g2.print("Turn");
     u8g2.setFont(u8g2_font_8x13O_tr);
-    right();                            //90 Degrees turn if right empty
-    forward(24, 24);
-    delay(300);
+    right(90);                            //90 Degrees turn if right empty
+    forward(23, 23);
+    delay(1000);
   }
   else {
     Serial.println("U-Turn");
@@ -178,8 +185,9 @@ void loop() {
     u8g2.print("Turn");
     u8g2.setFont(u8g2_font_8x13O_tr);
     uturn();                            //U-Turn if no route available
-    delay(300);
+    delay(1000);
   }
+  delay(1000);
 }
 
 
@@ -191,8 +199,9 @@ void ultrasonic(int echo) {
   digitalWrite(trig, LOW);
   duration = pulseIn(echo, HIGH);
   distance = duration * (0.0331 + 0.0006 * temp) / 2;
+  distance = abs(distance);
   if (distance >= 400) {
-    distance = 400;                   //Maximum effective range of HC-SR04 is 400CM
+    distance = 1;                   //Maximum effective range of HC-SR04 is 400CM
   }
 }
 
@@ -226,8 +235,39 @@ void forward(int stepsR, int stepsL) {
   counterR = 0;
 }
 
-void left() {
-  int steps = 8;
+void backward(int steps) {
+  counterL = 0;
+  counterR = 0;
+  while (steps > counterR && steps > counterL) {
+    if (steps > counterR) {
+      analogWrite(Mot_A1, 255);
+      analogWrite(Mot_A2, 0);
+    } else {
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 0);
+    }
+    if (steps > counterL) {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 250);
+    } else {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 0);
+    }
+    Serial.println(counterL);
+    Serial.println(counterR);
+  }
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
+  counterL = 0;
+  counterR = 0;
+}
+
+void left(int angle) {
+  int steps;
+  if (angle == 90) steps = 8;
+  else steps = 4;
   counterL = 0;
   counterR = 0;
   u8g2.setCursor(30, 55);
@@ -235,7 +275,7 @@ void left() {
   u8g2.setCursor(90, 55);
   u8g2.print(steps);
   u8g2.sendBuffer();
-  while (steps > counterR || steps > counterL) {
+  while (steps -1 > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 225);
@@ -259,8 +299,10 @@ void left() {
   counterR = 0;
 }
 
-void right() {
-  int steps = 8;
+void right(int angle) {
+  int steps;
+  if (angle == 90) steps = 8;
+  else steps = 4;
   counterL = 0;
   counterR = 0;
   u8g2.setCursor(30, 55);
@@ -293,7 +335,13 @@ void right() {
 }
 
 void uturn() {
-  int steps = 17;
+  right(4);
+  delay(1000);
+  backward(6);
+  delay(1000);
+  left(4);
+  delay(1000);
+  int steps = 16;
   counterL = 0;
   counterR = 0;
   u8g2.setCursor(30, 55);
@@ -301,7 +349,7 @@ void uturn() {
   u8g2.setCursor(90, 55);
   u8g2.print(steps);
   u8g2.sendBuffer();
-  while (steps > counterR || steps -1 > counterL) {
+  while (steps > counterR || steps  > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 220);
       analogWrite(Mot_A2, 0);
@@ -309,8 +357,8 @@ void uturn() {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
-    if (steps -1> counterL) {
-      analogWrite(Mot_B1, 220);
+    if (steps > counterL) {
+      analogWrite(Mot_B1, 255);
       analogWrite(Mot_B2, 0);
     } else {
       analogWrite(Mot_B1, 0);
@@ -323,4 +371,5 @@ void uturn() {
   analogWrite(Mot_B2, 0);
   counterL = 0;
   counterR = 0;
+  forward(15, 15);
 }
