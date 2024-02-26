@@ -105,80 +105,62 @@ void loop() {
       u8g2.drawBox( 123, 0, 2, 62);
       u8g2.drawBox( 3, 0, 2, 62);
     }
-    u8g2.setCursor(15,10);
+    u8g2.setCursor(15, 10);
     u8g2.print("Front:");
     u8g2.print(distanceF);
-    u8g2.setCursor(15,25);
+    u8g2.setCursor(15, 25);
     u8g2.print("Right:");
     u8g2.print(distanceR);
-    u8g2.setCursor(15,40);
+    u8g2.setCursor(15, 40);
     u8g2.print("Left:");
     u8g2.print(distanceL);
     u8g2.sendBuffer();
   }
+  while (distanceF > 25 && distanceL < 25 && distanceR < 25) {
+    u8g2.setCursor(34, 57);
+    u8g2.print("Forward");
 
-  if (distanceL > 40) {
+    stateR = false;
+    stateL = false;
+    Serial.println("Forward");
+    forward(24, 24);                  //In center then walk straight
+
+    ultrasonic(13);
+    distanceR = distance;
+    ultrasonic(8);                      //Checking with different ultrasonic sensors,
+    distanceF = distance;
+    ultrasonic(7);                      //But they all share same trigger pin,
+    distanceL = distance;               //So it saves pin resources.
+    delay(1000);
+  }
+  if (distanceL > 25 && distanceF > 25 && distanceR > 25 || distanceL > 25 && distanceF < 25 && distanceR > 25 || distanceL > 25 && distanceF > 25 || distanceL > 25 && distanceF < 25 && distanceR < 25) {
     Serial.println("Left");
     u8g2.setCursor(100, 15);
     u8g2.print("L");
-    u8g2.setFont(u8g2_font_squeezed_r6_tr);
-    u8g2.setCursor(96, 25);
-    u8g2.print("Turn");
-    u8g2.setFont(u8g2_font_8x13O_tr);
     left();                             //90 Degrees turn if left empty
     forward(24, 24);
     delay(300);
-  }  
-  else if (distanceF > 40) {            //Forward if front empty
-  u8g2.setCursor(34, 57);
-  u8g2.print("Forward");
-    if (distanceL + distanceR <= 70) {  //Check if in dual wall, calibrate purpose.
-      float distadjL = distanceL / 10;        
-      int distroundL = distadjL;        //Bascially just comparing L/R distance in 2nd digit of CM,
-      float distadjR = distanceR / 10;  //For e.g. R:1xCM and L:2xCM, both divided by 10 then rounded to just 1 and 2,
-      int distroundR = distadjR;        //The numbers were gotten with making a float into int file type.
-      if (distroundR > distroundL) {
-        stateL = true;
-        Serial.println("R>L");
-        forward(4, 3);
-      } else if (distroundR < distroundL) {
-        stateR = true;
-        Serial.println("L>R");
-        forward(3, 4);                  //Make calibration to the direction
-      } else {
-        stateR = false;
-        stateL = false;
-        Serial.println("Forward");
-        forward(8, 8);                  //In center then walk straight
-      }
-    } else {
-        stateR = false;
-        stateL = false;
-        Serial.println("Forward");
-        forward(8, 8);                  //In center then walk straight
-      }
-  } else if (distanceR > 40){
+  }
+  else if (distanceL < 25 && distanceF < 25) {
     Serial.println("Right");
     u8g2.setCursor(100, 15);
     u8g2.print("R");
-    u8g2.setFont(u8g2_font_squeezed_r6_tr);
-    u8g2.setCursor(96, 25);
-    u8g2.print("Turn");
-    u8g2.setFont(u8g2_font_8x13O_tr);
     right();                            //90 Degrees turn if right empty
     forward(24, 24);
     delay(300);
   }
-  else {
+  else if (distanceL < 25 && distanceR < 25 && distanceF < 25) {
     Serial.println("U-Turn");
     u8g2.setCursor(100, 15);
     u8g2.print("U");
-    u8g2.setFont(u8g2_font_squeezed_r6_tr);
-    u8g2.setCursor(96, 25);
-    u8g2.print("Turn");
-    u8g2.setFont(u8g2_font_8x13O_tr);
     uturn();                            //U-Turn if no route available
     delay(300);
+  }
+  else if (distanceL < 25 && distanceR > 25 && distanceF > 25) {
+    stateR = false;
+    stateL = false;
+    Serial.println("Forward");
+    forward(24, 24);
   }
 }
 
@@ -301,7 +283,7 @@ void uturn() {
   u8g2.setCursor(90, 55);
   u8g2.print(steps);
   u8g2.sendBuffer();
-  while (steps > counterR || steps -1 > counterL) {
+  while (steps > counterR || steps - 1 > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 220);
       analogWrite(Mot_A2, 0);
@@ -309,7 +291,7 @@ void uturn() {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
-    if (steps -1> counterL) {
+    if (steps - 1 > counterL) {
       analogWrite(Mot_B1, 220);
       analogWrite(Mot_B2, 0);
     } else {

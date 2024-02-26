@@ -20,7 +20,7 @@ void setup() {
 
 //logic for moving forward or stopping
 void loop() {
-  if (distanceF < 20 || distanceL > 20 && distanceR > 20) {
+  if (distanceF <= 20) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
@@ -28,13 +28,12 @@ void loop() {
     Serial.println("Stop");
     Stop();
   }
-  else if (distanceF > 20 && distanceL < 20 && distanceR < 20) {
+  else if (distanceF >= 20 && distanceL <= 20 && distanceR <= 20) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 255);
     analogWrite(Mot_B1, 255);
     analogWrite(Mot_B2, 0);
     Serial.println("Go");
-    moving(90);
   }
   delay(50);
   if (!state) {
@@ -52,45 +51,42 @@ void ultrasonicformovement(int number) {
   //  distance forward
   if (number == 1) {
     echo = 8;
-    digitalWrite(trig, LOW);
-    delay(5);
-    digitalWrite(trig, HIGH);
-    delay(10);
-    digitalWrite(trig, LOW);
-    duration = pulseIn(echo, HIGH);
-    distanceF = duration * 0.034 / 2;
+  }
+  //  distance left
+  else if (number == 2) {
+    echo = 7;
+  }
+  //  distance right
+  else {
+    echo = 13;
+  }
+  digitalWrite(trig, LOW);
+  delay(5);
+  digitalWrite(trig, HIGH);
+  delay(10);
+  digitalWrite(trig, LOW);
+  duration = pulseIn(echo, HIGH);
+  distance = duration * 0.034 / 2;
+  if (number == 1) {
+    distanceF = distance;
     Serial.println("Distance forward: ");
     Serial.println(distanceF);
   }
   //  distance left
   else if (number == 2) {
-    echo = 7;
-    digitalWrite(trig, LOW);
-    delay(5);
-    digitalWrite(trig, HIGH);
-    delay(10);
-    digitalWrite(trig, LOW);
-    duration = pulseIn(echo, HIGH);
-    distanceL = duration * 0.034 / 2;
+    distanceL = distance;
     Serial.println("Distance to the left: ");
     Serial.println(distanceL);
   }
   //  distance right
   else {
-    echo = 13;
-    digitalWrite(trig, LOW);
-    delay(5);
-    digitalWrite(trig, HIGH);
-    delay(10);
-    digitalWrite(trig, LOW);
-    duration = pulseIn(echo, HIGH);
-    distanceR = duration * 0.034 / 2;
+    distanceR = distance;
     Serial.println("Distance to the right: ");
     Serial.println(distanceR);
   }
 }
 
-void ultrasonicforneck() {
+int ultrasonicforneck() {
   echo = 8;
   digitalWrite(trig, LOW);
   delay(5);
@@ -112,30 +108,34 @@ int moving(int angle) {
   digitalWrite(Servomot, HIGH);
   delayMicroseconds(pulseWidth);
   digitalWrite(Servomot, LOW);
-  delay(125);
+  delay(100);
   ultrasonicforneck();
-  delay(200);
+  delay(100);
+
 }
 
 //Stopping and checking
-void Stop(){
-  state = true;
-  while (state) {
+void Stop() {
+//  state = true;
+//  while (state) {
+//    delay(1000);
     Serial.println("Right");
     moving(0);
     distance1 = distance;
+    //    delay(50);
 
     Serial.println("Front");
     moving(90);
     distance2 = distance;
+    //    delay(50);
 
     Serial.println("Left");
     moving(180);
     distance3 = distance;
+    //    delay(50);
 
     Serial.println("Dir detect complete");
 
-    state = false;
 
     Serial.print("DistanceR for neck: ");
     Serial.println(distance1);
@@ -145,6 +145,7 @@ void Stop(){
     Serial.println(distance3);
 
     moving(90);
-    delay(2000);
-  }
+    delay(1000);
+//    state = false;
+//  }
 }
