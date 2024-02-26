@@ -44,12 +44,12 @@ void loop() {
   //   Serial.println("Backward");
   //   backward(25);
   //   delay(1000);
-  // Serial.println("Left");
-  // left();
-  // delay(3000);
-  Serial.println("Right");
-  right();
+  Serial.println("Left");
+  left();
   delay(3000);
+  // Serial.println("Right");
+  // right();
+  // delay(3000);
   // uturn();
   // delay(3000);
 
@@ -99,7 +99,7 @@ void backward(int steps) {
   counterR = 0;
   while (steps > counterR && steps > counterL) {
     if (steps > counterR) {
-      analogWrite(Mot_A1, 249);
+      analogWrite(Mot_A1, 220);
       analogWrite(Mot_A2, 0);
     } else {
       analogWrite(Mot_A1, 0);
@@ -107,7 +107,7 @@ void backward(int steps) {
     }
     if (steps > counterL) {
       analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 255);
+      analogWrite(Mot_B2, 220);
     } else {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
