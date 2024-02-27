@@ -54,8 +54,6 @@ void setup() {
   u8g2.begin();
   u8g2.setFont(u8g2_font_8x13O_tr);
   delay(1000);
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   Serial.begin(9600);
   Serial.println("--------------Setup complete!----------------");
 }
@@ -138,20 +136,51 @@ void loop() {
     u8g2.setCursor(100, 15);
     u8g2.print("B");
     u8g2.sendBuffer();
-    while (distanceR < 25) {
+    while (distanceR < 25 && distanceL < 25) {
       Serial.println("Backward");
       backward(24);                            //Backward if no route available
       delay(1000);
       ultrasonic(13);
       distanceR = distance;
+      ultrasonic(7);
+      distanceL = distance;
     }
-    u8g2.setCursor(100, 15);
-    u8g2.print("R");
-    u8g2.sendBuffer();
-    right();
-    delay(1000);
-    forward(24, 24);
-    delay(1000);
+    if (distanceL > 25) {
+      u8g2.setCursor(100, 15);
+      u8g2.print("L");
+      u8g2.sendBuffer();
+      left();
+      delay(1000);
+      if (distanceL > 25 && distanceF > 25) {
+        u8g2.setCursor(100, 15);
+        u8g2.print("L");
+        u8g2.sendBuffer();
+        left();
+        delay(1000);
+      }
+      else if (distanceL < 25 && distanceF > 25) {
+        forward(24, 24);
+        delay(1000);
+      }
+    }
+    else if (distanceR > 25) {
+      u8g2.setCursor(100, 15);
+      u8g2.print("R");
+      u8g2.sendBuffer();
+      right();
+      delay(1000);
+      forward(24, 24);
+      delay(1000);
+    }
+    else if (distanceR > 25 && distanceL > 25) {
+      u8g2.setCursor(100, 15);
+      u8g2.print("R");
+      u8g2.sendBuffer();
+      right();
+      delay(1000);
+      forward(24, 24);
+      delay(1000);
+    }
   }
   else if (distanceL < 25 && distanceR > 25 && distanceF > 25) {
     Serial.println("Forward");
@@ -177,6 +206,8 @@ void forward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
   u8g2.sendBuffer();
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   while (stepsR > counterR || stepsL > counterL) {
     if (stepsR > counterR) {
       analogWrite(Mot_A1, 0);
@@ -195,6 +226,8 @@ void forward(int stepsR, int stepsL) {
     Serial.println(counterL);
     Serial.println(counterR);
   }
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
@@ -212,6 +245,8 @@ void left() {
   u8g2.setCursor(90, 55);
   u8g2.print(steps);
   u8g2.sendBuffer();
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 0);
@@ -234,6 +269,8 @@ void left() {
   analogWrite(Mot_B2, 0);
   counterL = 0;
   counterR = 0;
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void right() {
@@ -245,6 +282,8 @@ void right() {
   u8g2.setCursor(90, 55);
   u8g2.print(steps);
   u8g2.sendBuffer();
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 225);
@@ -267,12 +306,16 @@ void right() {
   analogWrite(Mot_B2, 0);
   counterL = 0;
   counterR = 0;
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 
 void backward(int steps) {
   counterL = 0;
   counterR = 0;
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 255);
@@ -295,4 +338,6 @@ void backward(int steps) {
   analogWrite(Mot_B2, 0);
   counterL = 0;
   counterR = 0;
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
