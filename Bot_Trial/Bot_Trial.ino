@@ -11,7 +11,7 @@ const int Grab = 4;                 //Claw
 //7,8,13 Reserved for ultrasonic sensors' echo pins
 //
 
-const int MagicNumber = 40, MagicDelay = 300;
+const int MagicNumber = 40, MagicDelay = 100;
 
 //PIN (Analog)
 const int D1 = A0, D3 = A1, D4 = A2;
@@ -66,15 +66,12 @@ void ISR_L() {
 }
 
 void loop() {
-  if (millis() > currenttime) {
-    currenttime = millis() + 500;
-    ultrasonic(13);
-    distanceR = distance;
-    ultrasonic(8);  //Checking with different ultrasonic sensors,
-    distanceF = distance;
-    ultrasonic(7);         //But they all share same trigger pin,
-    distanceL = distance;  //So it saves pin resources.
-  }
+  ultrasonic(13);
+  distanceR = distance;
+  ultrasonic(8);  //Checking with different ultrasonic sensors,
+  distanceF = distance;
+  ultrasonic(7);         //But they all share same trigger pin,
+  distanceL = distance;  //So it saves pin resources.
   if (millis() >= refreshtime) {
     refreshtime = millis() + MagicDelay;
     screen("Default");
@@ -98,12 +95,8 @@ void loop() {
   } else {
     while (distanceR <= MagicNumber && distanceL <= MagicNumber && distanceF <= MagicNumber) {
       screen("B");
-      backward(24);  //Backward if no route available
+      constBackward();  //Backward if no route available
       delay(MagicDelay);
-      ultrasonic(13);
-      distanceR = distance;
-      ultrasonic(7);
-      distanceL = distance;
     }
     if (distanceL >= MagicNumber) {
       screen("L");
@@ -171,29 +164,83 @@ void constforward() {
   int Mot_AlaL = 250;
   screen("F");
   while (distanceF >= 20) {
-    int offset = distanceL - distanceR;
-    if (offset >= 3 || offset <= -3) {
+    if ((distanceL + distanceR) <= 30) {
+      int offset = distanceL - distanceR;
+      if (offset >= 3 || offset <= -3) {
+        if (offset < 7 && offset >= 3) {
+          Mot_AlaR = 255;
+          Mot_AlaL = 245;
+          delay(500);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (offset >= 7) {
+          Mot_AlaR = 255;
+          Mot_AlaL = 240;
+          delay(750);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (-7 < offset && offset <= -3) {
+          Mot_AlaR = 245;
+          Mot_AlaL = 255;
+          delay(500);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (offset <= -7) {
+          Mot_AlaR = 240;
+          Mot_AlaL = 255;
+          delay(750);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else {
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        }
+      }
+    }
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, Mot_AlaR);
+    analogWrite(Mot_B1, Mot_AlaL);
+    analogWrite(Mot_B2, 0);
+    ultrasonic(8);
+    distanceF = distance;
+    ultrasonic(13);
+    distanceR = distance;
+    if (distanceR >= MagicNumber) break;
+  }
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
+}
+
+void constBackward() {
+  int Mot_AlaR = 254;
+  int Mot_AlaL = 250;
+  screen("B");
+  while (distanceL <= MagicNumber) {
+    if ((distanceL + distanceR) <= 30) {
+      int offset = distanceL - distanceR;
       if (offset < 7 && offset >= 3) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 245;
-        delay(500);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else if (offset >= 7) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 240;
-        delay(750);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else if (-7 < offset && offset <= -3) {
         Mot_AlaR = 245;
         Mot_AlaL = 255;
         delay(500);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
-      } else if (offset <= -7) {
+      } else if (offset >= 7) {
         Mot_AlaR = 240;
         Mot_AlaL = 255;
+        delay(750);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
+      } else if (-7 < offset && offset <= -3) {
+        Mot_AlaR = 255;
+        Mot_AlaL = 245;
+        delay(500);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
+      } else if (offset <= -7) {
+        Mot_AlaR = 255;
+        Mot_AlaL = 240;
         delay(750);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
@@ -209,11 +256,13 @@ void constforward() {
     analogWrite(Mot_A2, Mot_AlaR);
     analogWrite(Mot_B1, Mot_AlaL);
     analogWrite(Mot_B2, 0);
-    ultrasonic(8);
-    distanceF = distance;
     ultrasonic(13);
     distanceR = distance;
-    if (distanceR >= MagicNumber) break;
+    ultrasonic(8);
+    distanceF = distance;
+    ultrasonic(7);
+    distanceL = distance;
+    if (distanceL >= MagicNumber) break;
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -327,35 +376,54 @@ void right() {
   detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
-
-void backward(int steps) {
-  counterL = 0;
-  counterR = 0;
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
-  while (steps > counterR || steps > counterL) {
-    if (steps > counterR) {
-      analogWrite(Mot_A1, 254);
-      analogWrite(Mot_A2, 0);
-    } else {
+void truncalibrate(String advancedir, String dir) {
+  if (advancedir == "forward") {
+    int Mot_AlaR = 254;
+    int Mot_AlaL = 250;
+    if (dir == "left") {
+      while (distanceL <= MagicNumber) {
+        analogWrite(Mot_A1, 0);
+        analogWrite(Mot_A2, Mot_AlaR);
+        analogWrite(Mot_B1, Mot_AlaL);
+        analogWrite(Mot_B2, 0);
+      }
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
-    }
-    if (steps > counterL) {
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 250);
-    } else {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
+      delay(MagicDelay);
+      forward(12, 12);
+      return;
+    } else if (dir == "right") {
+      while (distanceR <= MagicNumber) {
+        analogWrite(Mot_A1, 0);
+        analogWrite(Mot_A2, Mot_AlaR);
+        analogWrite(Mot_B1, Mot_AlaL);
+        analogWrite(Mot_B2, 0);
+      }
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 0);
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 0);
+      delay(MagicDelay);
+      forward(12, 12);
+      return;
     }
+  } else {
+    int Mot_AlaR = 254;
+    int Mot_AlaL = 250;
+    while (distanceL >= MagicNumber) {
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, Mot_AlaR);
+      analogWrite(Mot_B1, Mot_AlaL);
+      analogWrite(Mot_B2, 0);
+    }
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    analogWrite(Mot_B2, 0);
+    delay(MagicDelay);
+    forward(12, 12);
+    return;
   }
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
-  analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
-

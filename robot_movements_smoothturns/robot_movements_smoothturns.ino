@@ -66,16 +66,17 @@ void loop() {
   //   Serial.println("Backward");
   //   backward(25);
   //   delay(1000);
-  ultrasonic(8);
-  distanceF = distance;
-  Serial.println(distanceF);
-  constforward();
-  delay(5000);
+  // ultrasonic(8);
+  // distanceF = distance;
+  // Serial.println(distanceF);
+  // constforward();
+  // delay(5000);
   // Serial.println("Right");
   // right();
   // delay(3000);
   // uturn();
   // delay(3000);
+  constBackward();
 
 
   // analogWrite(Mot_A1, 255);
