@@ -32,7 +32,7 @@ int pulseWidth;
 void setup() {
   u8g2.begin();
   u8g2.setFont(u8g2_font_8x13O_tr);
-  u8g2.setCursor(0,0);
+  u8g2.setCursor(0, 0);
   u8g2.print("Booting...");
   // put your setup code here, to run once:
   pinMode(Mot_A1, OUTPUT);
@@ -152,6 +152,7 @@ void screen(String dir) {
   else if (dir == "R") u8g2.print("R");
   else if (dir == "B") u8g2.print("B");
   else if (dir == "F") u8g2.print("F");
+
   u8g2.drawBox(123, 0, 2, 62);
   u8g2.drawBox(3, 0, 2, 62);
   u8g2.setCursor(15, 10);
@@ -167,68 +168,59 @@ void screen(String dir) {
 }
 
 void constforward() {
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
-  int steps;
-  counterL = 0;
-  counterR = 0;
-  steps = 4;
   int Mot_AlaR = 254;
   int Mot_AlaL = 250;
   while (distanceF >= 20) {
     u8g2.clearBuffer();
-    if (steps > counterR || steps > counterL) {
-      int offset = distanceL - distanceR;
-      if (offset >= 3 || offset <= -3) {
-        if (offset < 7 && offset >= 3) {
-          Mot_AlaR = 255;
-          Mot_AlaL = 245;
-          u8g2.setCursor(30, 30);
-          u8g2.print("SmolL");
-          delay(500);
-          Mot_AlaR = 254;
-          Mot_AlaL = 250;
-        } else if (offset >= 7) {
-          Mot_AlaR = 255;
-          Mot_AlaL = 240;
-          u8g2.setCursor(30, 30);
-          u8g2.print("BigL");
-          delay(750);
-          Mot_AlaR = 254;
-          Mot_AlaL = 250;
-        } else if (-7 < offset && offset <= -3) {
-          Mot_AlaR = 245;
-          Mot_AlaL = 255;
-          u8g2.setCursor(30, 30);
-          u8g2.print("SmolR");
-          delay(500);
-          Mot_AlaR = 254;
-          Mot_AlaL = 250;
-        } else if (offset <= -7) {
-          Mot_AlaR = 240;
-          Mot_AlaL = 255;
-          u8g2.setCursor(30, 30);
-          u8g2.print("BigR");
-          delay(750);
-          Mot_AlaR = 254;
-          Mot_AlaL = 250;
-        } else {
-          Mot_AlaR = 254;
-          Mot_AlaL = 250;
-        }
+    int offset = distanceL - distanceR;
+    if (offset >= 3 || offset <= -3) {
+      if (offset < 7 && offset >= 3) {
+        Mot_AlaR = 255;
+        Mot_AlaL = 245;
+        u8g2.setCursor(30, 30);
+        u8g2.print("SmolL");
+        delay(500);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
+      } else if (offset >= 7) {
+        Mot_AlaR = 255;
+        Mot_AlaL = 240;
+        u8g2.setCursor(30, 30);
+        u8g2.print("BigL");
+        delay(750);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
+      } else if (-7 < offset && offset <= -3) {
+        Mot_AlaR = 245;
+        Mot_AlaL = 255;
+        u8g2.setCursor(30, 30);
+        u8g2.print("SmolR");
+        delay(500);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
+      } else if (offset <= -7) {
+        Mot_AlaR = 240;
+        Mot_AlaL = 255;
+        u8g2.setCursor(30, 30);
+        u8g2.print("BigR");
+        delay(750);
+        Mot_AlaR = 254;
+        Mot_AlaL = 250;
       } else {
         Mot_AlaR = 254;
         Mot_AlaL = 250;
       }
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, Mot_AlaR);
-      analogWrite(Mot_B1, Mot_AlaL);
-      analogWrite(Mot_B2, 0);
-      u8g2.setCursor(96, 30);
-      u8g2.print(offset);
-      u8g2.sendBuffer();
+    } else {
+      Mot_AlaR = 254;
+      Mot_AlaL = 250;
     }
-    steps = steps + 4;
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, Mot_AlaR);
+    analogWrite(Mot_B1, Mot_AlaL);
+    analogWrite(Mot_B2, 0);
+    u8g2.setCursor(96, 30);
+    u8g2.print(offset);
+    u8g2.sendBuffer();
     ultrasonic(8);
     distanceF = distance;
     ultrasonic(7);
@@ -241,10 +233,6 @@ void constforward() {
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
   analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void forward(int stepsR, int stepsL) {
