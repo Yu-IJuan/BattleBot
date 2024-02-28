@@ -79,10 +79,9 @@ void loop() {
     refreshtime = millis() + MagicDelay;
     screen("Default");
   }
-  if (distanceL >= MagicNumber) {
-    forward(12, 12);
-    screen("L");
-    left();  //90 Degrees turn if left empty
+  if (distanceR >= MagicNumber) {
+    screen("R");
+    right();  //90 Degrees turn if left empty
     screen("F");
     forward(24, 24);
     delay(MagicDelay);
@@ -90,14 +89,14 @@ void loop() {
     screen("F");
     constforward();  //In center then walk straight
     delay(MagicDelay);
-  } else if (distanceR >= MagicNumber) {
-    screen("R");
-    right();  //90 Degrees turn if right empty
+  } else if (distanceL >= MagicNumber) {
+    screen("L");
+    left();  //90 Degrees turn if right empty
     screen("F");
     forward(24, 24);
     delay(MagicDelay);
   } else {
-    while (distanceR <= MagicNumber && distanceL <= MagicNumber) {
+    while (distanceR <= MagicNumber && distanceL <= MagicNumber && distanceF <= MagicNumber) {
       screen("B");
       backward(24);  //Backward if no route available
       delay(MagicDelay);
@@ -106,20 +105,20 @@ void loop() {
       ultrasonic(7);
       distanceL = distance;
     }
-    if (distanceR >= MagicNumber) {
-      screen("R");
-      right();
+    if (distanceL >= MagicNumber) {
+      screen("L");
+      left();
       delay(MagicDelay);
       screen("F");
       forward(24, 24);
       delay(MagicDelay);
-    } else if (distanceL >= MagicNumber) {
-      screen("L");
-      left();
+    } else if (distanceR >= MagicNumber) {
+      screen("R");
+      right();
       delay(MagicDelay);
-      if (distanceL >= MagicNumber) {
-        screen("L");
-        left();
+      if (distanceR >= MagicNumber) {
+        screen("R");
+        right();
         delay(MagicDelay);
         screen("F");
         forward(24, 24);
@@ -170,39 +169,31 @@ void screen(String dir) {
 void constforward() {
   int Mot_AlaR = 254;
   int Mot_AlaL = 250;
+  screen("F");
   while (distanceF >= 20) {
-    u8g2.clearBuffer();
     int offset = distanceL - distanceR;
     if (offset >= 3 || offset <= -3) {
       if (offset < 7 && offset >= 3) {
         Mot_AlaR = 255;
         Mot_AlaL = 245;
-        u8g2.setCursor(30, 30);
-        u8g2.print("SmolL");
         delay(500);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
       } else if (offset >= 7) {
         Mot_AlaR = 255;
         Mot_AlaL = 240;
-        u8g2.setCursor(30, 30);
-        u8g2.print("BigL");
         delay(750);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
       } else if (-7 < offset && offset <= -3) {
         Mot_AlaR = 245;
         Mot_AlaL = 255;
-        u8g2.setCursor(30, 30);
-        u8g2.print("SmolR");
         delay(500);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
       } else if (offset <= -7) {
         Mot_AlaR = 240;
         Mot_AlaL = 255;
-        u8g2.setCursor(30, 30);
-        u8g2.print("BigR");
         delay(750);
         Mot_AlaR = 254;
         Mot_AlaL = 250;
@@ -218,16 +209,11 @@ void constforward() {
     analogWrite(Mot_A2, Mot_AlaR);
     analogWrite(Mot_B1, Mot_AlaL);
     analogWrite(Mot_B2, 0);
-    u8g2.setCursor(96, 30);
-    u8g2.print(offset);
-    u8g2.sendBuffer();
     ultrasonic(8);
     distanceF = distance;
-    ultrasonic(7);
-    distanceL = distance;
     ultrasonic(13);
     distanceR = distance;
-    if (distanceL >= MagicNumber) break;
+    if (distanceR >= MagicNumber) break;
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -372,3 +358,4 @@ void backward(int steps) {
   detachInterrupt(digitalPinToInterrupt(Mot_R1));
   detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
+
