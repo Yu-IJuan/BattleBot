@@ -8,7 +8,6 @@ const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
 const int Mot_R1 = 3, Mot_R2 = 2;   //RPM Sensor
 const int trig = 12, echo;          //Ultrasonic
 const int Grab = 4;                 //Claw
-const int ServoMot = 10;            //Neck Servo
 //7,8,13 Reserved for ultrasonic sensors' echo pins
 //
 
@@ -31,6 +30,10 @@ int distanceR, distanceL, distanceF;
 int pulseWidth;
 
 void setup() {
+  u8g2.begin();
+  u8g2.setFont(u8g2_font_8x13O_tr);
+  u8g2.setCursor(0,0);
+  u8g2.print("Booting...");
   // put your setup code here, to run once:
   pinMode(Mot_A1, OUTPUT);
   pinMode(Mot_A2, OUTPUT);
@@ -43,7 +46,6 @@ void setup() {
   pinMode(D5, INPUT);
   pinMode(D6, INPUT);
   pinMode(D8, INPUT);
-  pinMode(ServoMot, OUTPUT);
 
   pinMode(trig, OUTPUT);
   pinMode(13, INPUT);
@@ -53,9 +55,6 @@ void setup() {
   pinMode(Grab, OUTPUT);
 
   temp = dht11.readTemperature();
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_8x13O_tr);
-  delay(MagicDelay);
 }
 
 void ISR_R() {
@@ -78,47 +77,28 @@ void loop() {
   }
   if (millis() >= refreshtime) {
     refreshtime = millis() + MagicDelay;
-    u8g2.clearBuffer();
-    u8g2.drawBox(123, 0, 2, 62);
-    u8g2.drawBox(3, 0, 2, 62);
-    u8g2.setCursor(15, 10);
-    u8g2.print("Front:");
-    u8g2.print(distanceF);
-    u8g2.setCursor(15, 25);
-    u8g2.print("Right:");
-    u8g2.print(distanceR);
-    u8g2.setCursor(15, 40);
-    u8g2.print("Left:");
-    u8g2.print(distanceL);
-    u8g2.sendBuffer();
+    screen("Default");
   }
   if (distanceL >= MagicNumber) {
-    u8g2.setCursor(100, 15);
-    u8g2.print("L");
-    u8g2.sendBuffer();
-    forward(12,12);
+    forward(12, 12);
+    screen("L");
     left();  //90 Degrees turn if left empty
+    screen("F");
     forward(24, 24);
     delay(MagicDelay);
   } else if (distanceF >= MagicNumber) {
-    u8g2.setCursor(10, 57);
-    u8g2.print("Const-Forward");
+    screen("F");
     constforward();  //In center then walk straight
     delay(MagicDelay);
   } else if (distanceR >= MagicNumber) {
-    u8g2.setCursor(100, 15);
-    u8g2.print("R");
-    u8g2.sendBuffer();
+    screen("R");
     right();  //90 Degrees turn if right empty
+    screen("F");
     forward(24, 24);
     delay(MagicDelay);
   } else {
-    u8g2.setCursor(100, 15);
-    u8g2.print("B");
-    u8g2.sendBuffer();
     while (distanceR <= MagicNumber && distanceL <= MagicNumber) {
-      u8g2.setCursor(30, 57);
-      u8g2.print("Backward");
+      screen("B");
       backward(24);  //Backward if no route available
       delay(MagicDelay);
       ultrasonic(13);
@@ -127,28 +107,25 @@ void loop() {
       distanceL = distance;
     }
     if (distanceR >= MagicNumber) {
-      u8g2.setCursor(100, 15);
-      u8g2.print("R");
-      u8g2.sendBuffer();
+      screen("R");
       right();
       delay(MagicDelay);
+      screen("F");
       forward(24, 24);
       delay(MagicDelay);
     } else if (distanceL >= MagicNumber) {
-      u8g2.setCursor(100, 15);
-      u8g2.print("L");
-      u8g2.sendBuffer();
+      screen("L");
       left();
       delay(MagicDelay);
       if (distanceL >= MagicNumber) {
-        u8g2.setCursor(100, 15);
-        u8g2.print("L");
-        u8g2.sendBuffer();
+        screen("L");
         left();
         delay(MagicDelay);
+        screen("F");
         forward(24, 24);
         delay(MagicDelay);
       } else {
+        screen("F");
         forward(24, 24);
         delay(MagicDelay);
       }
@@ -168,6 +145,27 @@ void ultrasonic(int echo) {
   if (distance >= 400) distance = 1;  //Maximum effective range of HC-SR04 is 400CM
 }
 
+void screen(String dir) {
+  u8g2.clearBuffer();
+  u8g2.setCursor(100, 15);
+  if (dir == "L") u8g2.print("L");
+  else if (dir == "R") u8g2.print("R");
+  else if (dir == "B") u8g2.print("B");
+  else if (dir == "F") u8g2.print("F");
+  u8g2.drawBox(123, 0, 2, 62);
+  u8g2.drawBox(3, 0, 2, 62);
+  u8g2.setCursor(15, 10);
+  u8g2.print("Front:");
+  u8g2.print(distanceF);
+  u8g2.setCursor(15, 25);
+  u8g2.print("Right:");
+  u8g2.print(distanceR);
+  u8g2.setCursor(15, 40);
+  u8g2.print("Left:");
+  u8g2.print(distanceL);
+  u8g2.sendBuffer();
+}
+
 void constforward() {
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
@@ -181,63 +179,51 @@ void constforward() {
     u8g2.clearBuffer();
     if (steps > counterR || steps > counterL) {
       int offset = distanceL - distanceR;
-      if (offset < 7 && offset >= 3) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 245;
-        u8g2.setCursor(30, 30);
-        u8g2.print("SmolL");
-        delay(500);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-        counterL = counterR = 0;
-      } else if (offset >= 7) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 240;
-        u8g2.setCursor(30, 30);
-        u8g2.print("BigL");
-        delay(750);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-        counterL = counterR = 0;
-      } else if (-7 < offset && offset <= -3) {
-        Mot_AlaR = 245;
-        Mot_AlaL = 255;
-        u8g2.setCursor(30, 30);
-        u8g2.print("SmolR");
-        delay(500);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-        counterL = counterR = 0;
-      } else if (offset <= -7) {
-        Mot_AlaR = 240;
-        Mot_AlaL = 255;
-        u8g2.setCursor(30, 30);
-        u8g2.print("BigR");
-        delay(750);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-        counterL = counterR = 0;
+      if (offset >= 3 || offset <= -3) {
+        if (offset < 7 && offset >= 3) {
+          Mot_AlaR = 255;
+          Mot_AlaL = 245;
+          u8g2.setCursor(30, 30);
+          u8g2.print("SmolL");
+          delay(500);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (offset >= 7) {
+          Mot_AlaR = 255;
+          Mot_AlaL = 240;
+          u8g2.setCursor(30, 30);
+          u8g2.print("BigL");
+          delay(750);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (-7 < offset && offset <= -3) {
+          Mot_AlaR = 245;
+          Mot_AlaL = 255;
+          u8g2.setCursor(30, 30);
+          u8g2.print("SmolR");
+          delay(500);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else if (offset <= -7) {
+          Mot_AlaR = 240;
+          Mot_AlaL = 255;
+          u8g2.setCursor(30, 30);
+          u8g2.print("BigR");
+          delay(750);
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        } else {
+          Mot_AlaR = 254;
+          Mot_AlaL = 250;
+        }
       } else {
         Mot_AlaR = 254;
         Mot_AlaL = 250;
-        u8g2.setCursor(96, 30);
-        u8g2.print(offset);
-        counterL = counterR = 0;
       }
-      if (steps > counterR) {
-        analogWrite(Mot_A1, 0);
-        analogWrite(Mot_A2, Mot_AlaR);
-      } else {
-        analogWrite(Mot_A1, 0);
-        analogWrite(Mot_A2, 0);
-      }
-      if (steps > counterL) {
-        analogWrite(Mot_B1, Mot_AlaL);
-        analogWrite(Mot_B2, 0);
-      } else {
-        analogWrite(Mot_B1, 0);
-        analogWrite(Mot_B2, 0);
-      }
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, Mot_AlaR);
+      analogWrite(Mot_B1, Mot_AlaL);
+      analogWrite(Mot_B2, 0);
       u8g2.setCursor(96, 30);
       u8g2.print(offset);
       u8g2.sendBuffer();
