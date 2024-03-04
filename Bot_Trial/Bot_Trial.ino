@@ -175,7 +175,7 @@ void screen(String dir) {
 }
 
 void constforward() {
-  int Mot_AlaR = 255;
+  int Mot_AlaR = 247;
   int Mot_AlaL = 250;
   screen("F");
   while (distanceF >= 20) {
@@ -278,15 +278,15 @@ void forward(int stepsR, int stepsL) {
   u8g2.sendBuffer();
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
-  while (stepsR > counterR || stepsL > counterL) {
+  while (stepsR > counterR || stepsL - 1 > counterL) {
     if (stepsR > counterR) {
       analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 253);
+      analogWrite(Mot_A2, 245);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
-    if (stepsL > counterL) {
+    if (stepsL - 1 > counterL) {
       analogWrite(Mot_B1, 250);
       analogWrite(Mot_B2, 0);
     } else {
@@ -412,7 +412,7 @@ void right() {
 
 void turncalibrate(String advancedir, String dir) {
   if (advancedir == "forward") {
-    int Mot_AlaR = 254;
+    int Mot_AlaR = 245;
     int Mot_AlaL = 250;
     analogWrite(Mot_A1, Mot_AlaR);
     analogWrite(Mot_A2, 0);
@@ -434,7 +434,7 @@ void turncalibrate(String advancedir, String dir) {
     analogWrite(Mot_B1, 0);
     analogWrite(Mot_B2, 0);
     delay(MagicDelay);
-    forward(20, 20);
+    forward(24, 24);
   } else {
     int Mot_AlaR = 250;
     int Mot_AlaL = 253;
