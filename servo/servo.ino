@@ -37,12 +37,3 @@ void loop() {
 
   moving(180);
 }
-
-void moving(int angle) {
-  int pulseWidth = map(angle, 0, 180, 544, 2400);
-
-  digitalWrite(ServoMot, HIGH);
-  delayMicroseconds(pulseWidth);
-  digitalWrite(ServoMot, LOW);
-  delay(20);
-}
