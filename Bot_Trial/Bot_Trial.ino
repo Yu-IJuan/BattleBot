@@ -2,6 +2,10 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 
+
+// Backward Left UNDERPOWERED
+// Yu-I 12:40
+
 //PIN (Digital)
 const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
 const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
@@ -11,7 +15,7 @@ const int Grab = 4;                 //Claw
 //7,8,13 Reserved for ultrasonic sensors' echo pins
 //
 
-const int MagicNumber = 40, MagicDelay = 100;
+const int MagicNumber = 35, MagicDelay = 300;
 
 //PIN (Analog)
 const int D1 = A0, D3 = A1, D4 = A2;
@@ -34,6 +38,7 @@ void setup() {
   u8g2.setFont(u8g2_font_8x13O_tr);
   u8g2.setCursor(0, 0);
   u8g2.print("Booting...");
+  u8g2.sendBuffer();
   // put your setup code here, to run once:
   pinMode(Mot_A1, OUTPUT);
   pinMode(Mot_A2, OUTPUT);
@@ -66,20 +71,26 @@ void ISR_L() {
 }
 
 void loop() {
-  ultrasonic(13);
-  distanceR = distance;
-  ultrasonic(8);  //Checking with different ultrasonic sensors,
-  distanceF = distance;
-  ultrasonic(7);         //But they all share same trigger pin,
-  distanceL = distance;  //So it saves pin resources.
+  if (millis() >= currenttime) {
+    currenttime = millis() + MagicNumber;
+    ultrasonic(13);
+    distanceR = distance;
+    ultrasonic(8);  //Checking with different ultrasonic sensors,
+    distanceF = distance;
+    ultrasonic(7);         //But they all share same trigger pin,
+    distanceL = distance;  //So it saves pin resources.
+  }
   if (millis() >= refreshtime) {
     refreshtime = millis() + MagicDelay;
     screen("Default");
   }
   if (distanceR >= MagicNumber) {
     screen("R");
+    turncalibrate("forward", "right");
+    delay(MagicDelay);
     right();  //90 Degrees turn if left empty
     screen("F");
+    delay(MagicDelay);
     forward(24, 24);
     delay(MagicDelay);
   } else if (distanceF >= MagicNumber) {
@@ -88,18 +99,21 @@ void loop() {
     delay(MagicDelay);
   } else if (distanceL >= MagicNumber) {
     screen("L");
+    turncalibrate("forward", "left");
+    delay(MagicDelay);
     left();  //90 Degrees turn if right empty
     screen("F");
+    delay(MagicDelay);
     forward(24, 24);
     delay(MagicDelay);
   } else {
-    while (distanceR <= MagicNumber && distanceL <= MagicNumber && distanceF <= MagicNumber) {
-      screen("B");
-      constBackward();  //Backward if no route available
-      delay(MagicDelay);
-    }
+    screen("B");
+    constBackward();  //Backward if no route available
+    delay(MagicDelay);
     if (distanceL >= MagicNumber) {
       screen("L");
+      turncalibrate("backward", "default");
+      delay(MagicDelay);
       left();
       delay(MagicDelay);
       screen("F");
@@ -109,6 +123,10 @@ void loop() {
       screen("R");
       right();
       delay(MagicDelay);
+      ultrasonic(13);
+      distanceR = distance;
+      ultrasonic(8);
+      distanceF = distance;
       if (distanceR >= MagicNumber) {
         screen("R");
         right();
@@ -116,7 +134,7 @@ void loop() {
         screen("F");
         forward(24, 24);
         delay(MagicDelay);
-      } else {
+      } else if (distanceF >= MagicNumber) {
         screen("F");
         forward(24, 24);
         delay(MagicDelay);
@@ -144,9 +162,6 @@ void screen(String dir) {
   else if (dir == "R") u8g2.print("R");
   else if (dir == "B") u8g2.print("B");
   else if (dir == "F") u8g2.print("F");
-
-  u8g2.drawBox(123, 0, 2, 62);
-  u8g2.drawBox(3, 0, 2, 62);
   u8g2.setCursor(15, 10);
   u8g2.print("Front:");
   u8g2.print(distanceF);
@@ -160,10 +175,21 @@ void screen(String dir) {
 }
 
 void constforward() {
-  int Mot_AlaR = 254;
+  int Mot_AlaR = 255;
   int Mot_AlaL = 250;
   screen("F");
   while (distanceF >= 20) {
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, Mot_AlaR);
+    analogWrite(Mot_B1, Mot_AlaL);
+    analogWrite(Mot_B2, 0);
+    ultrasonic(7);
+    distanceL = distance;
+    ultrasonic(8);
+    distanceF = distance;
+    ultrasonic(13);
+    distanceR = distance;
+    if (distanceR >= MagicNumber) break;
     if ((distanceL + distanceR) <= 30) {
       int offset = distanceL - distanceR;
       if (offset >= 3 || offset <= -3) {
@@ -192,20 +218,11 @@ void constforward() {
           Mot_AlaR = 254;
           Mot_AlaL = 250;
         } else {
-          Mot_AlaR = 254;
+          Mot_AlaR = 255;
           Mot_AlaL = 250;
         }
       }
     }
-    analogWrite(Mot_A1, 0);
-    analogWrite(Mot_A2, Mot_AlaR);
-    analogWrite(Mot_B1, Mot_AlaL);
-    analogWrite(Mot_B2, 0);
-    ultrasonic(8);
-    distanceF = distance;
-    ultrasonic(13);
-    distanceR = distance;
-    if (distanceR >= MagicNumber) break;
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -214,60 +231,45 @@ void constforward() {
 }
 
 void constBackward() {
-  int Mot_AlaR = 254;
-  int Mot_AlaL = 250;
-  screen("B");
-  while (distanceL <= MagicNumber) {
-    if ((distanceL + distanceR) <= 30) {
-      int offset = distanceL - distanceR;
-      if (offset < 7 && offset >= 3) {
-        Mot_AlaR = 245;
-        Mot_AlaL = 255;
-        delay(500);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else if (offset >= 7) {
-        Mot_AlaR = 240;
-        Mot_AlaL = 255;
-        delay(750);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else if (-7 < offset && offset <= -3) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 245;
-        delay(500);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else if (offset <= -7) {
-        Mot_AlaR = 255;
-        Mot_AlaL = 240;
-        delay(750);
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      } else {
-        Mot_AlaR = 254;
-        Mot_AlaL = 250;
-      }
-    } else {
-      Mot_AlaR = 254;
-      Mot_AlaL = 250;
-    }
-    analogWrite(Mot_A1, 0);
-    analogWrite(Mot_A2, Mot_AlaR);
-    analogWrite(Mot_B1, Mot_AlaL);
-    analogWrite(Mot_B2, 0);
-    ultrasonic(13);
-    distanceR = distance;
-    ultrasonic(8);
-    distanceF = distance;
+  int stepsR, stepsL;
+  stepsR = stepsL = 4;
+  counterL = 0;
+  counterR = 0;
+  u8g2.sendBuffer();
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  while (distanceL <= MagicNumber || distanceR <= MagicNumber) {
     ultrasonic(7);
     distanceL = distance;
+    ultrasonic(13);
+    distanceR = distance;
     if (distanceL >= MagicNumber) break;
+    else if (distanceR >= MagicNumber) break;
+    while (stepsR - 1 > counterR || stepsL > counterL) {
+      if (stepsR - 1 > counterR) {
+        analogWrite(Mot_A1, 248);
+        analogWrite(Mot_A2, 0);
+      } else {
+        analogWrite(Mot_A1, 0);
+        analogWrite(Mot_A2, 0);
+      }
+      if (stepsL > counterL) {
+        analogWrite(Mot_B1, 0);
+        analogWrite(Mot_B2, 253);
+      } else {
+        analogWrite(Mot_B1, 0);
+        analogWrite(Mot_B2, 0);
+      }
+    }
+    stepsL = stepsL + 2;
+    stepsR = stepsR + 2;
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
   analogWrite(Mot_B2, 0);
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void forward(int stepsR, int stepsL) {
@@ -279,7 +281,7 @@ void forward(int stepsR, int stepsL) {
   while (stepsR > counterR || stepsL > counterL) {
     if (stepsR > counterR) {
       analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 254);
+      analogWrite(Mot_A2, 253);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
@@ -302,33 +304,65 @@ void forward(int stepsR, int stepsL) {
   counterR = 0;
 }
 
-void left() {
-  int steps = 8;
+void backward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
-  u8g2.setCursor(30, 55);
-  u8g2.print("Steps:");
-  u8g2.setCursor(90, 55);
-  u8g2.print(steps);
   u8g2.sendBuffer();
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  while (stepsR > counterR || stepsL > counterL) {
+    if (stepsR > counterR) {
+      analogWrite(Mot_A1, 250);
+      analogWrite(Mot_A2, 0);
+    } else {
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, 0);
+    }
+    if (stepsL > counterL) {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 253);
+    } else {
+      analogWrite(Mot_B1, 0);
+      analogWrite(Mot_B2, 0);
+    }
+  }
+  detachInterrupt(digitalPinToInterrupt(Mot_R1));
+  detachInterrupt(digitalPinToInterrupt(Mot_R2));
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
+  counterL = 0;
+  counterR = 0;
+}
+
+void left() {
+  int steps = 8;
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  counterL = 0;
+  counterR = 0;
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 225);
+      analogWrite(Mot_A2, 205);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
     if (steps > counterL) {
       analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 230);
+      analogWrite(Mot_B2, 205);
     } else {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
     }
   }
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 205);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 205);
+  delay(41);
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
@@ -341,31 +375,31 @@ void left() {
 
 void right() {
   int steps = 8;
-  counterL = 0;
-  counterR = 0;
-  u8g2.setCursor(30, 55);
-  u8g2.print("Steps:");
-  u8g2.setCursor(90, 55);
-  u8g2.print(steps);
-  u8g2.sendBuffer();
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  counterL = 0;
+  counterR = 0;
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
-      analogWrite(Mot_A1, 225);
+      analogWrite(Mot_A1, 205);
       analogWrite(Mot_A2, 0);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
     if (steps > counterL) {
-      analogWrite(Mot_B1, 225);
+      analogWrite(Mot_B1, 205);
       analogWrite(Mot_B2, 0);
     } else {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
     }
   }
+  analogWrite(Mot_A1, 205);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 205);
+  analogWrite(Mot_B2, 0);
+  delay(41);
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
@@ -376,54 +410,48 @@ void right() {
   detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
-void truncalibrate(String advancedir, String dir) {
+void turncalibrate(String advancedir, String dir) {
   if (advancedir == "forward") {
     int Mot_AlaR = 254;
     int Mot_AlaL = 250;
+    analogWrite(Mot_A1, Mot_AlaR);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    analogWrite(Mot_B2, Mot_AlaL);
     if (dir == "left") {
-      while (distanceL <= MagicNumber) {
-        analogWrite(Mot_A1, 0);
-        analogWrite(Mot_A2, Mot_AlaR);
-        analogWrite(Mot_B1, Mot_AlaL);
-        analogWrite(Mot_B2, 0);
+      while (distanceL >= MagicNumber) {
+        ultrasonic(7);
+        distanceL = distance;
       }
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 0);
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 0);
-      delay(MagicDelay);
-      forward(12, 12);
-      return;
     } else if (dir == "right") {
-      while (distanceR <= MagicNumber) {
-        analogWrite(Mot_A1, 0);
-        analogWrite(Mot_A2, Mot_AlaR);
-        analogWrite(Mot_B1, Mot_AlaL);
-        analogWrite(Mot_B2, 0);
+      while (distanceR >= MagicNumber) {
+        ultrasonic(13);
+        distanceR = distance;
       }
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 0);
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 0);
-      delay(MagicDelay);
-      forward(12, 12);
-      return;
-    }
-  } else {
-    int Mot_AlaR = 254;
-    int Mot_AlaL = 250;
-    while (distanceL >= MagicNumber) {
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, Mot_AlaR);
-      analogWrite(Mot_B1, Mot_AlaL);
-      analogWrite(Mot_B2, 0);
     }
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
     analogWrite(Mot_B2, 0);
     delay(MagicDelay);
-    forward(12, 12);
+    forward(20, 20);
+  } else {
+    int Mot_AlaR = 250;
+    int Mot_AlaL = 253;
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, Mot_AlaR);
+    analogWrite(Mot_B1, Mot_AlaL);
+    analogWrite(Mot_B2, 0);
+    while (distanceL >= MagicNumber) {
+      ultrasonic(7);
+      distanceL = distance;
+    }
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    analogWrite(Mot_B2, 0);
+    delay(MagicDelay);
+    backward(8, 8);
     return;
   }
 }
