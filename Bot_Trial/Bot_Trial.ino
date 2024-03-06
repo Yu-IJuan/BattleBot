@@ -1,6 +1,4 @@
 #include <DHT11.h>
-#include <U8g2lib.h>
-#include <Wire.h>
 
 
 // Backward Left UNDERPOWERED
@@ -23,7 +21,6 @@ const int D1 = A0, D3 = A1, D4 = A2;
 const int D5 = A3, D6 = A6, D8 = A7;  //For IR B&W Sensor
 //
 
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);
 DHT11 dht11(1);  //DHT's PIN
 int temp;        //For recording Temp
 
@@ -37,11 +34,6 @@ int pulseWidth;
 bool stateServo = false;
 
 void setup() {
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_8x13O_tr);
-  u8g2.setCursor(0, 0);
-  u8g2.print("Booting...");
-  u8g2.sendBuffer();
   // put your setup code here, to run once:
   pinMode(Mot_A1, OUTPUT);
   pinMode(Mot_A2, OUTPUT);
