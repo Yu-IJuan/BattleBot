@@ -1,13 +1,11 @@
 
 #include <DHT11.h>
-#include <U8g2lib.h>
-#include <Wire.h>
 
 //PIN (Digital)
 const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
 const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
 const int Mot_R1 = 3, Mot_R2 = 2;   //RPM Sensor
-const int trig = 12, echo;          //Ultrasonic
+int trig, echo;          //Ultrasonic
 const int Grab = 4;                 //Claw
 const int ServoMot = 10;            //Neck Servo
 //7,8,13 Reserved for ultrasonic sensors' echo pins
@@ -18,7 +16,6 @@ const int D1 = A0, D3 = A1, D4 = A2;
 const int D5 = A3, D6 = A6, D8 = A7;  //For IR B&W Sensor
 //
 
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);
 DHT11 dht11(1);  //DHT's PIN
 int temp;        //For recording Temp
 
@@ -44,7 +41,9 @@ void setup() {
   pinMode(D8, INPUT);
   pinMode(ServoMot, OUTPUT);
 
-  pinMode(trig, OUTPUT);
+  pinMode(12, OUTPUT);
+  pinMode(A4, OUTPUT);
+  pinMode(A5, OUTPUT);
   pinMode(13, INPUT);
   pinMode(7, INPUT);
   pinMode(8, INPUT);
@@ -52,8 +51,6 @@ void setup() {
   pinMode(Grab, OUTPUT);
 
   temp = dht11.readTemperature();
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_8x13O_tr);
   delay(1000);
   Serial.begin(9600);
 }
@@ -71,18 +68,20 @@ void loop() {
   Serial.println("Distance");
   Serial.println(distanceR);
   Serial.println(distanceL);
-  Serial.println(distanceF);
+  Serial.println(distanceF);  
 }
 
 void ultrasonic(int echo) {
+  if (echo == 7) trig = A5;
+  else if (echo == 8) trig = 12;
+  else trig = A4;
   digitalWrite(trig, LOW);
   delay(5);
   digitalWrite(trig, HIGH);
   delay(10);
   digitalWrite(trig, LOW);
   duration = pulseIn(echo, HIGH);
+  delay(50);
   distance = duration * (0.0331 + 0.0006 * temp) / 2;
-  if (distance >= 400) {
-    distance = 400;  //Maximum effective range of HC-SR04 is 400CM
-  }
+  if (distance >= 400) distance = 1;  //Maximum effective range of HC-SR04 is 400CM
 }

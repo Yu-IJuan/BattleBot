@@ -73,8 +73,8 @@ void loop() {
   // constforward();
   // delay(5000);
   // Serial.println("Right");
-  // right();
-  // delay(3000);
+  right();
+  delay(3000);
   // uturn();
   // delay(3000);
   // constBackward();
@@ -194,21 +194,21 @@ void constBackward() {
 
 void left() {
   int steps = 8;
-  counterL = 0;
-  counterR = 0;
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  counterL = 0;
+  counterR = 0;
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
       analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 205);
+      analogWrite(Mot_A2, 215);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
     if (steps > counterL) {
       analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 205);
+      analogWrite(Mot_B2, 215);
     } else {
       analogWrite(Mot_B1, 0);
       analogWrite(Mot_B2, 0);
@@ -231,20 +231,20 @@ void left() {
 
 void right() {
   int steps = 8;
-  counterL = 0;
-  counterR = 0;
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  counterL = 0;
+  counterR = 0;
   while (steps > counterR || steps > counterL) {
     if (steps > counterR) {
-      analogWrite(Mot_A1, 205);
+      analogWrite(Mot_A1, 210);
       analogWrite(Mot_A2, 0);
     } else {
       analogWrite(Mot_A1, 0);
       analogWrite(Mot_A2, 0);
     }
     if (steps > counterL) {
-      analogWrite(Mot_B1, 205);
+      analogWrite(Mot_B1, 210);
       analogWrite(Mot_B2, 0);
     } else {
       analogWrite(Mot_B1, 0);
@@ -265,6 +265,7 @@ void right() {
   detachInterrupt(digitalPinToInterrupt(Mot_R1));
   detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
+
 void uturn() {
   int steps = 17;
   counterL = 0;
