@@ -2,23 +2,32 @@
 #include <Adafruit_NeoPixel.h>
 
 //PIN (Digital)
-const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
-const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
-const int Mot_R1 = 3, Mot_R2 = 2;   //RPM Sensor
+#define Mot_A1 = 9 
+#define Mot_A2 = 6   //Right Motor (PWM)
+#define Mot_B1 = 5 
+#define Mot_B2 = 11  //Left Motor (PWM)
+#define Mot_R1 = 3 
+#define Mot_R2 = 2   //RPM Sensor
 int trig, echo;                     //Ultrasonic
-const int Grab = 4;                 //Claw
-const int Neo = 10;                 //LED pin
+#define Grab = 4                 //Claw
+#define Neo = 10                 //LED pin
 //7 ,8 ,13 Reserved for ultrasonic sensors' echo pins
 //12, A5 Reserved for ultrasonic sensors' trig pins
 
 
-const int MagicNumber = 20, BiggerMagicNumber = 40, MagicDelay = 50;
-const int LEDCount = 4;
+#define MagicNumber = 20 
+#define BiggerMagicNumber = 40 
+#define MagicDelay = 50
+#define LEDCount = 4
 int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 //PIN (Analog)
-const int D1 = A0, D3 = A1, D4 = A2;
-const int D5 = A3, D6 = A6, D8 = A7;  //For IR B&W Sensor
+#define D1 = A0
+#define D3 = A1
+#define D4 = A2
+#define D5 = A3
+#define D6 = A6
+#define D8 = A7  //For IR B&W Sensor
 //
 
 DHT11 dht11(A4);  //DHT's PIN
@@ -63,17 +72,7 @@ void setup() {
   //  for (int i; i < 50; i++) moving(70);
   temp = dht11.readTemperature();
   pixels.begin();
-}
-
-void moving(int angle) {
-  int pulseWidth = map(angle, 0, 180, 544, 2400);
-
-  for (int i; i < 10; i++) {
-    digitalWrite(Grab, HIGH);
-    delayMicroseconds(pulseWidth);
-    digitalWrite(Grab, LOW);
-    delayMicroseconds(20000 - pulseWidth);
-  }
+  
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
 }
@@ -164,6 +163,17 @@ void loop() {
         delay(MagicDelay);
       }
     }
+  }
+}
+
+void moving(int angle) {
+  int pulseWidth = map(angle, 0, 180, 544, 2400);
+
+  for (int i; i < 10; i++) {
+    digitalWrite(Grab, HIGH);
+    delayMicroseconds(pulseWidth);
+    digitalWrite(Grab, LOW);
+    delayMicroseconds(20000 - pulseWidth);
   }
 }
 
