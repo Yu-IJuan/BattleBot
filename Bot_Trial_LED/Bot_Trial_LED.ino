@@ -9,7 +9,7 @@ int trig, echo;                     //Ultrasonic
 const int Grab = 4;                 //Claw
 const int Neo = 10;                 //LED pin
 //7 ,8 ,13 Reserved for ultrasonic sensors' echo pins
-//12, A4, A5 Reserved for ultrasonic sensors' trig pins
+//12, A5 Reserved for ultrasonic sensors' trig pins
 
 
 const int MagicNumber = 20, BiggerMagicNumber = 40, MagicDelay = 50;
@@ -21,7 +21,7 @@ const int D1 = A0, D3 = A1, D4 = A2;
 const int D5 = A3, D6 = A6, D8 = A7;  //For IR B&W Sensor
 //
 
-DHT11 dht11(1);  //DHT's PIN
+DHT11 dht11(A4);  //DHT's PIN
 int temp;        //For recording Temp
 
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
@@ -74,6 +74,8 @@ void moving(int angle) {
     digitalWrite(Grab, LOW);
     delayMicroseconds(20000 - pulseWidth);
   }
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
 }
 
 void ISR_R() {
@@ -167,9 +169,8 @@ void loop() {
 
 
 void ultrasonic(int echo) {
-  if (echo == 7) trig = A5;
+  if (echo == 7 || echo == 13) trig = A5;
   else if (echo == 8) trig = 12;
-  else trig = A4;
   digitalWrite(trig, LOW);
   delay(5);
   digitalWrite(trig, HIGH);
@@ -243,13 +244,9 @@ void constBackward() {
 
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_B2, 0);
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void forward(int stepsR, int stepsL) {
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   counterL = 0;
   counterR = 0;
   while (stepsR > counterR || stepsL - 1 > counterL) {
@@ -266,8 +263,6 @@ void forward(int stepsR, int stepsL) {
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B1, Mot_AnaB1);
   }
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
   counterL = 0;
@@ -277,8 +272,6 @@ void forward(int stepsR, int stepsL) {
 void backward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   while (stepsR - 1 > counterR || stepsL > counterL) {
     if (stepsR - 1 > counterR) {
       Mot_AnaA1 = 245;
@@ -293,8 +286,6 @@ void backward(int stepsR, int stepsL) {
     analogWrite(Mot_A1, Mot_AnaA1);
     analogWrite(Mot_B2, Mot_AnaB2);
   }
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_B2, 0);
   counterL = 0;
@@ -304,8 +295,6 @@ void backward(int stepsR, int stepsL) {
 void left() {
   delay(MagicDelay);
   int steps = 8;
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   counterL = 0;
   counterR = 0;
   while (steps > counterR || steps > counterL) {
@@ -329,15 +318,11 @@ void left() {
   analogWrite(Mot_B2, 0);
   counterL = 0;
   counterR = 0;
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void right() {
   delay(MagicDelay);
   int steps = 7;
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
   counterL = 0;
   counterR = 0;
   while (steps > counterR || steps > counterL) {
@@ -361,8 +346,6 @@ void right() {
   analogWrite(Mot_B1, 0);
   counterL = 0;
   counterR = 0;
-  detachInterrupt(digitalPinToInterrupt(Mot_R1));
-  detachInterrupt(digitalPinToInterrupt(Mot_R2));
 }
 
 void turncalibrate(String advancedir, String dir) {
