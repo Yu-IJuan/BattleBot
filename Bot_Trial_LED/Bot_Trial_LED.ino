@@ -1,37 +1,39 @@
 #include <DHT11.h>
 #include <Adafruit_NeoPixel.h>
+#include <PCF8574.h>
+
 
 //PIN (Digital)
-#define Mot_A1 = 9 
-#define Mot_A2 = 6   //Right Motor (PWM)
-#define Mot_B1 = 5 
-#define Mot_B2 = 11  //Left Motor (PWM)
-#define Mot_R1 = 3 
-#define Mot_R2 = 2   //RPM Sensor
-int trig, echo;                     //Ultrasonic
-#define Grab = 4                 //Claw
-#define Neo = 10                 //LED pin
+#define Mot_A1 9
+#define Mot_A2 6  //Right Motor (PWM)
+#define Mot_B1 5
+#define Mot_B2 11  //Left Motor (PWM)
+#define Mot_R1 3
+#define Mot_R2 2  //RPM Sensor
+int trig, echo;   //Ultrasonic
+#define Grab 4    //Claw
+#define Neo 10    //LED pin
 //7 ,8 ,13 Reserved for ultrasonic sensors' echo pins
 //12, A5 Reserved for ultrasonic sensors' trig pins
 
 
-#define MagicNumber = 20 
-#define BiggerMagicNumber = 40 
-#define MagicDelay = 50
-#define LEDCount = 4
+#define MagicNumber 20
+#define BiggerMagicNumber 40
+#define MagicDelay 100
+#define LEDCount 4
 int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 //PIN (Analog)
-#define D1 = A0
-#define D3 = A1
-#define D4 = A2
-#define D5 = A3
-#define D6 = A6
-#define D8 = A7  //For IR B&W Sensor
+#define D1 A0
+#define D3 A1
+#define D4 A2
+#define D5 A3
+#define D6 A6
+#define D8 A7  //For IR B&W Sensor
 //
 
 DHT11 dht11(A4);  //DHT's PIN
-int temp;        //For recording Temp
+int temp;         //For recording Temp
 
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
@@ -50,8 +52,6 @@ void setup() {
   pinMode(Mot_A2, OUTPUT);
   pinMode(Mot_B1, OUTPUT);
   pinMode(Mot_B2, OUTPUT);
-  pinMode(Mot_R1, INPUT);
-  pinMode(Mot_R2, INPUT);
 
   pinMode(D1, INPUT);
   pinMode(D3, INPUT);
@@ -72,7 +72,8 @@ void setup() {
   //  for (int i; i < 50; i++) moving(70);
   temp = dht11.readTemperature();
   pixels.begin();
-  
+  Serial.begin(9600);
+
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
 }
@@ -199,21 +200,35 @@ void LED(String dir) {
     pixels.setPixelColor(1, pixels.Color(255, 0, 0));
     pixels.setPixelColor(2, pixels.Color(255, 0, 0));
     pixels.setPixelColor(3, pixels.Color(140, 255, 0));
+    Serial.println("L");
   } else if (dir == "R") {
     pixels.setPixelColor(0, pixels.Color(255, 0, 0));
     pixels.setPixelColor(1, pixels.Color(140, 255, 0));
     pixels.setPixelColor(2, pixels.Color(140, 255, 0));
     pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+    Serial.println("R");
 
   } else if (dir == "B") {
     pixels.setPixelColor(0, pixels.Color(255, 255, 255));
     pixels.setPixelColor(1, pixels.Color(255, 255, 255));
     pixels.setPixelColor(2, pixels.Color(255, 0, 0));
     pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+    Serial.println("B");
   } else if (dir == "F") {
     for (int i = 0; i < Neo; i++) {
       pixels.setPixelColor(i, pixels.Color(255, 0, 0));
     }
+    Serial.println("F");
+  } else if (dir == "WL") {
+    pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(1, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(2, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+  } else if (dir == "WR") {
+    pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(1, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(2, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(3, pixels.Color(255, 255, 255));
   }
   pixels.show();
   moving(30);
@@ -221,21 +236,81 @@ void LED(String dir) {
 
 void constforward() {
   LED("F");
-  while (distanceF >= MagicNumber) {
-    Mot_AnaA2 = 246;
-    Mot_AnaB1 = 250;
-    analogWrite(Mot_A2, Mot_AnaA2);
-    analogWrite(Mot_B1, Mot_AnaB1);
-    ultrasonic(8);
-    distanceF = distance;
-    ultrasonic(13);
-    distanceR = distance;
+  int stepsR = 4, stepsL = 4;
+  bool stateStop = false;
+  int caliTurn = 0;
+  counterL = 0;
+  counterR = 0;
+  while (distanceR <= BiggerMagicNumber || distanceF >= MagicNumber) {
+    if (caliTurn == 0) {
+      ultrasonic(7);
+      distanceL = distance;
+      ultrasonic(8);
+      distanceF = distance;
+      ultrasonic(13);
+      distanceR = distance;
+    }
+    while (stepsR > counterR || stepsL > counterL) {
+      if (stepsR > counterR) {
+        Mot_AnaA2 = 246;
+      } else {
+        Mot_AnaA2 = 0;
+      }
+      if (stepsL > counterL) {
+        Mot_AnaB1 = 250;
+      } else {
+        Mot_AnaB1 = 0;
+      }
+      analogWrite(Mot_A2, Mot_AnaA2);
+      analogWrite(Mot_B1, Mot_AnaB1);
+    }
 
-    if (distanceR >= BiggerMagicNumber) break;
-    else if (distanceF <= MagicNumber) break;
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+
+    int offset = distanceL - distanceR;
+
+    if (!stateStop) {
+      if (caliTurn == 0) {
+        if (offset >= 4) {
+          stepsL = 6;
+          stepsR = 4;
+          caliTurn = 1;
+          LED("WR");
+        } else if (offset <= -4) {
+          stepsL = 4;
+          stepsR = 6;
+          caliTurn = 2;
+          LED("WL");
+        } else {
+          stepsL = 6;
+          stepsR = 6;
+          LED("F");
+        }
+      } else {
+        if (caliTurn == 1) {
+          stepsL = 4;
+          stepsR = 6;
+          caliTurn = 0;
+        } else if (caliTurn == 2) {
+          stepsL = 6;
+          stepsR = 4;
+          caliTurn = 0;
+        }
+      }
+      counterL = 0;
+      counterR = 0;
+    }
+    Serial.print("R");
+    Serial.println(counterR);
+    Serial.print("L");
+    Serial.println(counterL);
   }
+  counterL = 0;
+  counterR = 0;
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
+  delay(200);
 }
 
 void constBackward() {
@@ -259,19 +334,23 @@ void constBackward() {
 void forward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
-  while (stepsR > counterR || stepsL - 1 > counterL) {
+  while (stepsR > counterR || stepsL > counterL) {
     if (stepsR > counterR) {
       Mot_AnaA2 = 246;
     } else {
       Mot_AnaA2 = 0;
     }
-    if (stepsL - 1 > counterL) {
+    if (stepsL > counterL) {
       Mot_AnaB1 = 250;
     } else {
       Mot_AnaB1 = 0;
     }
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B1, Mot_AnaB1);
+    Serial.print("R");
+    Serial.println(counterR);
+    Serial.print("L");
+    Serial.println(counterL);
   }
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
@@ -282,8 +361,8 @@ void forward(int stepsR, int stepsL) {
 void backward(int stepsR, int stepsL) {
   counterL = 0;
   counterR = 0;
-  while (stepsR - 1 > counterR || stepsL > counterL) {
-    if (stepsR - 1 > counterR) {
+  while (stepsR > counterR || stepsL > counterL) {
+    if (stepsR > counterR) {
       Mot_AnaA1 = 245;
     } else {
       Mot_AnaA1 = 0;
@@ -295,6 +374,10 @@ void backward(int stepsR, int stepsL) {
     }
     analogWrite(Mot_A1, Mot_AnaA1);
     analogWrite(Mot_B2, Mot_AnaB2);
+    Serial.print("R");
+    Serial.println(counterR);
+    Serial.print("L");
+    Serial.println(counterL);
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_B2, 0);
@@ -320,6 +403,10 @@ void left() {
     }
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B2, Mot_AnaB2);
+    Serial.print("R");
+    Serial.println(counterR);
+    Serial.print("L");
+    Serial.println(counterL);
   }
   analogWrite(Mot_A2, 205);
   analogWrite(Mot_B2, 205);
@@ -348,6 +435,10 @@ void right() {
     }
     analogWrite(Mot_A1, Mot_AnaA1);
     analogWrite(Mot_B1, Mot_AnaB1);
+    Serial.print("R");
+    Serial.println(counterR);
+    Serial.print("L");
+    Serial.println(counterL);
   }
   analogWrite(Mot_A1, 205);
   analogWrite(Mot_B1, 205);
@@ -360,8 +451,8 @@ void right() {
 
 void turncalibrate(String advancedir, String dir) {
   if (advancedir == "forward") {
-    int Mot_AlaR = 246;
-    int Mot_AlaL = 250;
+    int Mot_AlaR = 241;
+    int Mot_AlaL = 242;
     analogWrite(Mot_A1, Mot_AlaR);
     analogWrite(Mot_B2, Mot_AlaL);
     if (dir == "left") {
@@ -375,10 +466,12 @@ void turncalibrate(String advancedir, String dir) {
         distanceR = distance;
       }
     }
+    delay(200);
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_B2, 0);
-    delay(MagicDelay);
+    delay(200);
     forward(23, 23);
+    delay(200);
     return;
   } else {
     int Mot_AlaR = 250;
