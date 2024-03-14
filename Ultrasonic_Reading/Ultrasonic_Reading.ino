@@ -72,9 +72,8 @@ void loop() {
 }
 
 void ultrasonic(int echo) {
-  if (echo == 7) trig = A5;
+  if (echo == 7 || echo == 13) trig = A5;
   else if (echo == 8) trig = 12;
-  else trig = A4;
   digitalWrite(trig, LOW);
   delay(5);
   digitalWrite(trig, HIGH);
