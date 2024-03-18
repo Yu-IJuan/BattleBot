@@ -40,6 +40,7 @@ int distanceR, distanceL, distanceF;
 int pulseWidth;
 
 bool stateServo = false, ranOnce = false;
+int stateTurn;
 
 void setup() {
   // put your setup code here, to run once:
@@ -240,7 +241,7 @@ void LED(String dir) {
 
 void report() {
   if (millis() >= reportPeriod) {
-    reportPeriod = millis() + 2000;
+    reportPeriod = millis() + 3000;
     Serial.print("CounterL&CounterR=>");
     Serial.print(counterL);
     Serial.print("----");
@@ -250,17 +251,17 @@ void report() {
     Serial.println("///////////////////////////////");
     Serial.print("distanceL=>");
     Serial.println(distanceL);
-    Serial.print("LA1Analog=>");
-    Serial.println(Mot_AnaA1);
-    Serial.print("LA2Analog=>");
-    Serial.println(Mot_AnaA2);
+    Serial.print("LB1Analog=>");
+    Serial.println(Mot_AnaB1);
+    Serial.print("LB2Analog=>");
+    Serial.println(Mot_AnaB2);
     Serial.println("///////////////////////////////");
     Serial.print("distanceR=>");
     Serial.println(distanceR);
-    Serial.print("RB1Analog=>");
-    Serial.println(Mot_AnaB1);
-    Serial.print("RB2Analog=>");
-    Serial.println(Mot_AnaB2);
+    Serial.print("RA1Analog=>");
+    Serial.println(Mot_AnaA1);
+    Serial.print("RA2Analog=>");
+    Serial.println(Mot_AnaA2);
     Serial.println("================================");
   }
 }
@@ -276,41 +277,44 @@ void constforward() {
     if (distanceR >= BiggerMagicNumber) break;
     else if (distanceF <= MagicNumber) break;
 
-    if (millis() >= refreshtime) {
-      if (distanceR <= BiggerMagicNumber) {
-        if (distanceR < 7) {
-          LED("WR");
-          if (distanceL + distanceR <= 30) {
-            Mot_AnaA2 = map(distanceL, 14, 11, 245, 255);
-            Mot_AnaB1 = map(distanceL, 11, 14, 210, 220);
-          } else {
-            Mot_AnaA2 = map(distanceR, 6, 0, 245, 255);
-            Mot_AnaB1 = map(distanceR, 0, 6, 210, 220);
-          }
-        } else if (distanceR >= 7 && distanceR <= 11) {
-          LED("WF");
-          Mot_AnaA2 = map(distanceR, 7, 11, 241, 255);  //R
-          Mot_AnaB1 = map(distanceR, 11, 7, 243, 253);  //L
-        } else if (distanceR > 11) {
-          LED("WL");
-          if (distanceL + distanceR <= 30) {
-            Mot_AnaA2 = map(distanceL, 6, 0, 210, 220);
-            Mot_AnaB1 = map(distanceL, 0, 6, 245, 255);
-          } else {
-            Mot_AnaA2 = map(distanceR, 14, 11, 210, 220);
-            Mot_AnaB1 = map(distanceR, 11, 14, 245, 255);
-          }
+    if (distanceR <= BiggerMagicNumber) {
+      if (distanceR <= 6) {
+        LED("WR");
+        stateTurn = 1;
+        if (distanceL + distanceR <= 35) {
+          Mot_AnaA2 = map(distanceL, 14, 10, 230, 255);
+          Mot_AnaB1 = map(distanceL, 10, 14, 210, 220);
+        } else {
+          Mot_AnaA2 = map(distanceR, 6, 2, 230, 255);
+          Mot_AnaB1 = map(distanceR, 2, 6, 210, 220);
         }
-      } else {
-        Mot_AnaA2 = 246;
-        Mot_AnaB1 = 250;
+      } else if (distanceR > 6 && distanceR < 10) {
+        LED("WF");
+        Mot_AnaA2 = map(distanceR, 7, 9, 241, 255);  //R
+        Mot_AnaB1 = map(distanceR, 9, 7, 243, 253);  //L
+      } else if (distanceR >= 10) {
+        LED("WL");
+        stateTurn = 2;
+        if (distanceL + distanceR <= 35) {
+          Mot_AnaA2 = map(distanceL, 6, 2, 210, 220);
+          Mot_AnaB1 = map(distanceL, 2, 6, 230, 255);
+        } else {
+          Mot_AnaA2 = map(distanceR, 14, 10, 210, 220);
+          Mot_AnaB1 = map(distanceR, 10, 14, 230, 255);
+        }
       }
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, Mot_AnaA2);
-      analogWrite(Mot_B1, Mot_AnaB1);
-      analogWrite(Mot_B2, 0);
-      refreshtime = millis() + 50;
+    } else {
+      Mot_AnaA2 = 246;
+      Mot_AnaB1 = 250;
     }
+    if (Mot_AnaA2 >= 255) Mot_AnaA2 = 255;
+    else if (Mot_AnaA2 < 210) Mot_AnaA2 = 210;
+    if (Mot_AnaB1 >= 255) Mot_AnaB1 = 255;
+    else if (Mot_AnaB1 < 210) Mot_AnaB1 = 210;
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_A2, Mot_AnaA2);
+    analogWrite(Mot_B1, Mot_AnaB1);
+    analogWrite(Mot_B2, 0);
     report();
   }
   analogWrite(Mot_A1, 0);
@@ -346,8 +350,8 @@ void forward(int stepsR, int stepsL) {
   Mot_AnaB2 = 0;
   counterL = 0;
   counterR = 0;
-  while (stepsR - 1 > counterR || stepsL > counterL) {
-    if (stepsR - 1 > counterR) {
+  while (stepsR > counterR || stepsL > counterL) {
+    if (stepsR > counterR) {
       Mot_AnaA2 = 230;
     } else {
       Mot_AnaA1 = 100;
@@ -495,7 +499,7 @@ void turncalibrate(String advancedir, String dir) {
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
     delay(MagicDelay);
-    backward(14, 14);
+    backward(18, 18);
     return;
   } else {
     LED("DetectF");
