@@ -41,6 +41,8 @@ int pulseWidth;
 
 bool stateServo = false, ranOnce = false;
 int stateTurn;
+int Black, White;
+bool starting = false, BnWstate = false, ending = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -81,445 +83,535 @@ void ISR_L() {
   counterL++;
 }
 
-void loop() {
-  if (!stateServo) {
-    moving(90);
-    delay(200);
-    stateServo = true;
-    report();
+void start() {
+  forward(2, 2);
+  for (int i; i < 4; i++) {
+    if (BnWstate) {
+      Black = Black + getAverageLightLevel();
+    } else {
+      White = White + getAverageLightLevel();
+    }
+    BnWstate = !BnWstate;
+  }
+  White = White / 2 - 200;
+  Black = Black / 2 + 200;
+  forward(2, 2);
+}
+
+void lineFollowStart() {
+  while (A <= Black || B <= Black || C <= Black || D <= Black || E <= Black || F <= Black) {
+    read();
+    if (A <= Black && B <= Black && C <= Black && D <= Black && E <= Black && F <= Black) {
+      forward(8, 8);
+      moving(90);
+      delay(200);
+      stateServo = true;
+      report();
+      moving(30);
+      left();
+      forward(8, 8);
+    }
+  }
+  else if (C <= Black && D <= Black) {
+    analogWrite(Mot_A2, 246);  //R
+    analogWrite(Mot_B1, 250);  //L
+  }
+  else if (B <= Black && C <= Black) {
+    analogWrite(Mot_A2, 245);
+    analogWrite(Mot_B1, 255);
+  }
+  else if (D <= Black && E <= Black) {
+    analogWrite(Mot_A2, 255);
+    analogWrite(Mot_B1, 245);
+  }
+}
+
+void lineFollowEnd() {
+  while (A <= Black || B <= Black || C <= Black || D <= Black || E <= Black || F <= Black) {
+    read();
+    if (A <= Black && B <= Black && C <= Black && D <= Black && E <= Black && F <= Black) {
+      forward(8, 8);
+      moving(30);
+      delay(200);
+      stateServo = true;
+      report();
+      moving(90);
+      backward(8);
+      bool stop = true;
+      while (stop) {
+        analogWrite(Mot_A1, 0);
+        analogWrite(Mot_B2, 0);
+        analogWrite(Mot_A2, 0);
+        analogWrite(Mot_B1, 0);
+      }
+    } else if (C <= Black && D <= Black) {
+      analogWrite(Mot_A2, 246);  //R
+      analogWrite(Mot_B1, 250);  //L
+    } else if (B <= Black && C <= Black) {
+      analogWrite(Mot_A2, 245);
+      analogWrite(Mot_B1, 255);
+    } else if (D <= Black && E <= Black) {
+      analogWrite(Mot_A2, 255);
+      analogWrite(Mot_B1, 245);
+    }
   }
 
-  ultrasonic(13);
-  distanceR = distance;
-  ultrasonic(8);  //Checking with different ultrasonic sensors,
-  distanceF = distance;
-  ultrasonic(7);         //But they all share same trigger pin,
-  distanceL = distance;  //So it saves pin resources.
+  void read() {
+    A = analogRead(D1);
+    B = analogRead(D3);
+    C = analogRead(D4);
+    D = analogRead(D5);
+    E = analogRead(D6);
+    F = analogRead(D7);
+  }
 
-  moving(30);
+  int getAverageLightLevel() {
+    read();
+    return (A + B + C + D + E + F) / 6;
+  }
 
-  if (distanceR >= BiggerMagicNumber) {
-    LED("R");
-    turncalibrate("forward", "right");
-    delay(MagicDelay);
-    right();  //90 Degrees turn if left empty
-    turncalibrate("advance", "right");
-    delay(MagicDelay);
-  } else if (distanceF >= MagicNumber) {
-    LED("F");
-    constforward();  //In center then walk straight
-    delay(MagicDelay);
-  } else if (distanceL >= BiggerMagicNumber) {
-    LED("L");
-    turncalibrate("forward", "left");
-    delay(MagicDelay);
-    left();  //90 Degrees turn if right empty
-    turncalibrate("advance", "left");
-    delay(MagicDelay);
-  } else {
-    LED("B");
-    constBackward();  //Backward if no route available
-    delay(MagicDelay);
-    ultrasonic(7);
-    distanceL = distance;
-    ultrasonic(13);
-    distanceR = distance;
-    if (distanceL >= BiggerMagicNumber) {
-      LED("L");
-      turncalibrate("backward", "default");
-      delay(MagicDelay);
-      left();
-      delay(MagicDelay);
-      LED("F");
-      forward(12, 12);
-      delay(MagicDelay);
-    } else if (distanceR >= BiggerMagicNumber) {
-      LED("R");
-      right();
-      delay(MagicDelay);
+  void loop() {
+    if (!starting) {
+      start();
+      lineFollowStart();
+      starting = true;
+    }
+
+    if (ending) {
+      lineFollowEnd();
+    }
+
+    if (starting && !ending) {
       ultrasonic(13);
       distanceR = distance;
-      ultrasonic(8);
+      ultrasonic(8);  //Checking with different ultrasonic sensors,
       distanceF = distance;
+      ultrasonic(7);         //But they all share same trigger pin,
+      distanceL = distance;  //So it saves pin resources.
+
       if (distanceR >= BiggerMagicNumber) {
         LED("R");
-        right();
+        turncalibrate("forward", "right");
         delay(MagicDelay);
+        right();  //90 Degrees turn if left empty
+        turncalibrate("advance", "right");
+        delay(MagicDelay);
+      } else if (distanceF >= MagicNumber) {
         LED("F");
-        forward(24, 24);
+        constforward();  //In center then walk straight
         delay(MagicDelay);
-      } else if (distanceF >= BiggerMagicNumber) {
-        LED("F");
-        forward(24, 24);
+      } else if (distanceL >= BiggerMagicNumber) {
+        LED("L");
+        turncalibrate("forward", "left");
         delay(MagicDelay);
-      }
-    }
-  }
-}
-
-void moving(int angle) {
-  int pulseWidth = map(angle, 0, 180, 544, 2400);
-
-  for (int i; i < 10; i++) {
-    digitalWrite(Grab, HIGH);
-    delayMicroseconds(pulseWidth);
-    digitalWrite(Grab, LOW);
-    delayMicroseconds(20000 - pulseWidth);
-  }
-}
-
-
-void ultrasonic(int echo) {
-  if (echo == 7 || echo == 13) trig = A5;
-  else if (echo == 8) trig = 12;
-  digitalWrite(trig, LOW);
-  delay(5);
-  digitalWrite(trig, HIGH);
-  delay(10);
-  digitalWrite(trig, LOW);
-  duration = pulseIn(echo, HIGH);
-  delay(50);
-  distance = (duration * 0.0340 / 2);
-  if (distance >= 400) distance = 1;  //Maximum effective range of HC-SR04 is 400CM
-}
-
-void LED(String dir) {
-  pixels.clear();
-  if (dir == "L") {
-    pixels.setPixelColor(0, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(1, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(2, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(3, pixels.Color(140, 255, 0));
-    Serial.println("L");
-  } else if (dir == "R") {
-    pixels.setPixelColor(0, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(1, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(2, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(3, pixels.Color(255, 0, 0));
-    Serial.println("R");
-
-  } else if (dir == "B") {
-    pixels.setPixelColor(0, pixels.Color(255, 255, 255));
-    pixels.setPixelColor(1, pixels.Color(255, 255, 255));
-    pixels.setPixelColor(2, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(3, pixels.Color(255, 0, 0));
-    Serial.println("B");
-  } else if (dir == "F") {
-    for (int i = 0; i < Neo; i++) {
-      pixels.setPixelColor(i, pixels.Color(255, 0, 0));
-    }
-    Serial.println("F");
-  } else if (dir == "WL") {
-    pixels.setPixelColor(0, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(1, pixels.Color(255, 255, 255));
-    pixels.setPixelColor(2, pixels.Color(255, 255, 255));
-    pixels.setPixelColor(3, pixels.Color(255, 0, 0));
-  } else if (dir == "WR") {
-    pixels.setPixelColor(0, pixels.Color(255, 255, 255));
-    pixels.setPixelColor(1, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(2, pixels.Color(255, 0, 0));
-    pixels.setPixelColor(3, pixels.Color(255, 255, 255));
-  } else if (dir == "WF") {
-    pixels.setPixelColor(0, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(1, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(2, pixels.Color(140, 255, 0));
-    pixels.setPixelColor(3, pixels.Color(140, 255, 0));
-  } else if (dir == "Detect") {
-    pixels.setPixelColor(0, pixels.Color(0, 0, 255));
-    pixels.setPixelColor(1, pixels.Color(0, 0, 255));
-    pixels.setPixelColor(2, pixels.Color(0, 0, 255));
-    pixels.setPixelColor(3, pixels.Color(0, 0, 255));
-  } else if (dir == "DetectF") {
-    pixels.setPixelColor(0, pixels.Color(0, 0, 255));
-    pixels.setPixelColor(1, pixels.Color(0, 0, 255));
-    pixels.setPixelColor(2, pixels.Color(0, 255, 0));
-    pixels.setPixelColor(3, pixels.Color(0, 255, 0));
-  }
-  pixels.show();
-  moving(30);
-}
-
-void report() {
-  if (millis() >= reportPeriod) {
-    reportPeriod = millis() + 3000;
-    Serial.print("CounterL&CounterR=>");
-    Serial.print(counterL);
-    Serial.print("----");
-    Serial.println(counterR);
-    Serial.print("distanceF=>");
-    Serial.println(distanceF);
-    Serial.println("///////////////////////////////");
-    Serial.print("distanceL=>");
-    Serial.println(distanceL);
-    Serial.print("LB1Analog=>");
-    Serial.println(Mot_AnaB1);
-    Serial.print("LB2Analog=>");
-    Serial.println(Mot_AnaB2);
-    Serial.println("///////////////////////////////");
-    Serial.print("distanceR=>");
-    Serial.println(distanceR);
-    Serial.print("RA1Analog=>");
-    Serial.println(Mot_AnaA1);
-    Serial.print("RA2Analog=>");
-    Serial.println(Mot_AnaA2);
-    Serial.println("================================");
-  }
-}
-
-void constforward() {
-  while (distanceR <= BiggerMagicNumber || distanceF >= MagicNumber) {
-    ultrasonic(7);
-    distanceL = distance;
-    ultrasonic(8);
-    distanceF = distance;
-    ultrasonic(13);
-    distanceR = distance;
-    if (distanceR >= BiggerMagicNumber) break;
-    else if (distanceF <= MagicNumber) break;
-
-    if (distanceR <= BiggerMagicNumber) {
-      if (distanceR <= 6) {
-        LED("WR");
-        stateTurn = 1;
-        if (distanceL + distanceR <= 35) {
-          Mot_AnaA2 = map(distanceL, 14, 10, 230, 255);
-          Mot_AnaB1 = map(distanceL, 10, 14, 210, 220);
-        } else {
-          Mot_AnaA2 = map(distanceR, 6, 2, 230, 255);
-          Mot_AnaB1 = map(distanceR, 2, 6, 210, 220);
-        }
-      } else if (distanceR > 6 && distanceR < 10) {
-        LED("WF");
-        Mot_AnaA2 = map(distanceR, 7, 9, 241, 255);  //R
-        Mot_AnaB1 = map(distanceR, 9, 7, 243, 253);  //L
-      } else if (distanceR >= 10) {
-        LED("WL");
-        stateTurn = 2;
-        if (distanceL + distanceR <= 35) {
-          Mot_AnaA2 = map(distanceL, 6, 2, 210, 220);
-          Mot_AnaB1 = map(distanceL, 2, 6, 230, 255);
-        } else {
-          Mot_AnaA2 = map(distanceR, 14, 10, 210, 220);
-          Mot_AnaB1 = map(distanceR, 10, 14, 230, 255);
-        }
-      }
-    } else {
-      Mot_AnaA2 = 246;
-      Mot_AnaB1 = 250;
-    }
-    if (Mot_AnaA2 >= 255) Mot_AnaA2 = 255;
-    else if (Mot_AnaA2 < 210) Mot_AnaA2 = 210;
-    if (Mot_AnaB1 >= 255) Mot_AnaB1 = 255;
-    else if (Mot_AnaB1 < 210) Mot_AnaB1 = 210;
-    analogWrite(Mot_A1, 0);
-    analogWrite(Mot_A2, Mot_AnaA2);
-    analogWrite(Mot_B1, Mot_AnaB1);
-    analogWrite(Mot_B2, 0);
-    report();
-  }
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
-  analogWrite(Mot_B2, 0);
-}
-
-void constBackward() {
-  while (distanceL <= MagicNumber || distanceR <= MagicNumber) {
-    ultrasonic(7);
-    distanceL = distance;
-    ultrasonic(13);
-    distanceR = distance;
-    Mot_AnaA1 = 244;  //R
-    Mot_AnaB2 = 250;  //L
-    analogWrite(Mot_A1, Mot_AnaA1);
-    analogWrite(Mot_B2, Mot_AnaB2);
-    if (distanceL >= BiggerMagicNumber) break;
-    else if (distanceR >= BiggerMagicNumber) break;
-    report();
-  }
-
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_B2, 0);
-}
-
-void forward(int stepsR, int stepsL) {
-  LED("F");
-  Mot_AnaA1 = 0;
-  Mot_AnaA2 = 0;
-  Mot_AnaB1 = 0;
-  Mot_AnaB2 = 0;
-  counterL = 0;
-  counterR = 0;
-  while (stepsR > counterR || stepsL > counterL) {
-    if (stepsR > counterR) {
-      Mot_AnaA2 = 230;
-    } else {
-      Mot_AnaA1 = 100;
-      Mot_AnaA2 = 0;
-    }
-    if (stepsL > counterL) {
-      Mot_AnaB1 = 234;
-    } else {
-      Mot_AnaB1 = 0;
-      Mot_AnaB2 = 100;
-    }
-
-    analogWrite(Mot_A2, Mot_AnaA2);
-    analogWrite(Mot_B1, Mot_AnaB1);
-    analogWrite(Mot_A1, Mot_AnaA1);
-    analogWrite(Mot_B2, Mot_AnaB2);
-    report();
-  }
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_B2, 0);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
-  Mot_AnaA1 = 0;
-  Mot_AnaA2 = 0;
-  Mot_AnaB1 = 0;
-  Mot_AnaB2 = 0;
-  counterL = 0;
-  counterR = 0;
-}
-
-void backward(int stepsR, int stepsL) {
-  counterL = 0;
-  counterR = 0;
-  while (stepsR > counterR || stepsL > counterL) {
-    if (stepsR > counterR) {
-      Mot_AnaA1 = 244;
-    } else {
-      Mot_AnaA1 = 0;
-    }
-    if (stepsL > counterL) {
-      Mot_AnaB2 = 250;
-    } else {
-      Mot_AnaB2 = 0;
-    }
-    analogWrite(Mot_A1, Mot_AnaA1);
-    analogWrite(Mot_B2, Mot_AnaB2);
-    report();
-  }
-  analogWrite(Mot_A1, 0);
-  analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
-}
-
-void left() {
-  delay(MagicDelay);
-  int steps = 16;
-  counterL = 0;
-  counterR = 0;
-  while (steps > counterR) {
-    if (steps > counterR) {
-      Mot_AnaA2 = 215;
-    } else {
-      Mot_AnaA2 = 0;
-    }
-    analogWrite(Mot_A2, Mot_AnaA2);
-    report();
-  }
-  analogWrite(Mot_A2, 210);
-  delay(88);
-  analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
-}
-
-void right() {
-  delay(MagicDelay);
-  int steps = 15;
-  counterL = 0;
-  counterR = 0;
-  while (steps > counterL) {
-    if (steps > counterL) {
-      Mot_AnaB1 = 210;
-    } else {
-      Mot_AnaB1 = 0;
-    }
-    analogWrite(Mot_B1, Mot_AnaB1);
-    report();
-  }
-  analogWrite(Mot_B1, 210);
-  delay(88);
-  analogWrite(Mot_B1, 0);
-  counterL = 0;
-  counterR = 0;
-}
-
-void turncalibrate(String advancedir, String dir) {
-  if (advancedir == "forward") {
-    int Mot_AlaR = 245;
-    int Mot_AlaL = 252;
-    analogWrite(Mot_A1, Mot_AlaR);
-    analogWrite(Mot_B2, Mot_AlaL);
-    if (dir == "left") {
-      while (distanceL >= BiggerMagicNumber) {
+        left();  //90 Degrees turn if right empty
+        turncalibrate("advance", "left");
+        delay(MagicDelay);
+      } else {
+        LED("B");
+        constBackward();  //Backward if no route available
+        delay(MagicDelay);
         ultrasonic(7);
         distanceL = distance;
-      }
-    } else if (dir == "right") {
-      while (distanceR >= BiggerMagicNumber) {
         ultrasonic(13);
         distanceR = distance;
+        if (distanceL >= BiggerMagicNumber) {
+          LED("L");
+          turncalibrate("backward", "default");
+          delay(MagicDelay);
+          left();
+          delay(MagicDelay);
+          LED("F");
+          forward(12, 12);
+          delay(MagicDelay);
+        } else if (distanceR >= BiggerMagicNumber) {
+          LED("R");
+          right();
+          delay(MagicDelay);
+          ultrasonic(13);
+          distanceR = distance;
+          ultrasonic(8);
+          distanceF = distance;
+          if (distanceR >= BiggerMagicNumber) {
+            LED("R");
+            right();
+            delay(MagicDelay);
+            LED("F");
+            forward(24, 24);
+            delay(MagicDelay);
+          } else if (distanceF >= BiggerMagicNumber) {
+            LED("F");
+            forward(24, 24);
+            delay(MagicDelay);
+          }
+        }
       }
     }
-    analogWrite(Mot_A1, 0);
-    analogWrite(Mot_B2, 0);
-    delay(200);
-    ultrasonic(8);
-    distanceF = distance;
-    if (distanceF <= 30) {
-      LED("Detect");
-      analogWrite(Mot_A2, 246);
-      analogWrite(Mot_B1, 250);
-      while (distanceF > 14) {
-        ultrasonic(8);
-        distanceF = distance;
-      }
-    } else {
-      LED("F");
-      forward(14, 14);
+  }
+
+  void moving(int angle) {
+    int pulseWidth = map(angle, 0, 180, 544, 2400);
+
+    for (int i; i < 10; i++) {
+      digitalWrite(Grab, HIGH);
+      delayMicroseconds(pulseWidth);
+      digitalWrite(Grab, LOW);
+      delayMicroseconds(20000 - pulseWidth);
     }
-    analogWrite(Mot_A2, 0);
-    analogWrite(Mot_B1, 0);
-    delay(MagicDelay);
-    return;
-  } else if (advancedir == "backward") {
-    int Mot_AlaR = 250;
-    int Mot_AlaL = 253;
-    analogWrite(Mot_A2, Mot_AlaR);
-    analogWrite(Mot_B1, Mot_AlaL);
-    while (distanceL >= BiggerMagicNumber) {
+  }
+
+
+  void ultrasonic(int echo) {
+    if (echo == 7 || echo == 13) trig = A5;
+    else if (echo == 8) trig = 12;
+    digitalWrite(trig, LOW);
+    delay(5);
+    digitalWrite(trig, HIGH);
+    delay(10);
+    digitalWrite(trig, LOW);
+    duration = pulseIn(echo, HIGH);
+    delay(50);
+    distance = (duration * 0.0340 / 2);
+    if (distance >= 400) distance = 1;  //Maximum effective range of HC-SR04 is 400CM
+  }
+
+  void LED(String dir) {
+    pixels.clear();
+    if (dir == "L") {
+      pixels.setPixelColor(0, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(1, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(2, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(3, pixels.Color(140, 255, 0));
+      Serial.println("L");
+    } else if (dir == "R") {
+      pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(1, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(2, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+      Serial.println("R");
+
+    } else if (dir == "B") {
+      pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+      pixels.setPixelColor(1, pixels.Color(255, 255, 255));
+      pixels.setPixelColor(2, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+      Serial.println("B");
+    } else if (dir == "F") {
+      for (int i = 0; i < Neo; i++) {
+        pixels.setPixelColor(i, pixels.Color(255, 0, 0));
+      }
+      Serial.println("F");
+    } else if (dir == "WL") {
+      pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(1, pixels.Color(255, 255, 255));
+      pixels.setPixelColor(2, pixels.Color(255, 255, 255));
+      pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+    } else if (dir == "WR") {
+      pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+      pixels.setPixelColor(1, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(2, pixels.Color(255, 0, 0));
+      pixels.setPixelColor(3, pixels.Color(255, 255, 255));
+    } else if (dir == "WF") {
+      pixels.setPixelColor(0, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(1, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(2, pixels.Color(140, 255, 0));
+      pixels.setPixelColor(3, pixels.Color(140, 255, 0));
+    } else if (dir == "Detect") {
+      pixels.setPixelColor(0, pixels.Color(0, 0, 255));
+      pixels.setPixelColor(1, pixels.Color(0, 0, 255));
+      pixels.setPixelColor(2, pixels.Color(0, 0, 255));
+      pixels.setPixelColor(3, pixels.Color(0, 0, 255));
+    } else if (dir == "DetectF") {
+      pixels.setPixelColor(0, pixels.Color(0, 0, 255));
+      pixels.setPixelColor(1, pixels.Color(0, 0, 255));
+      pixels.setPixelColor(2, pixels.Color(0, 255, 0));
+      pixels.setPixelColor(3, pixels.Color(0, 255, 0));
+    }
+    pixels.show();
+    moving(30);
+  }
+
+  void report() {
+    if (millis() >= reportPeriod) {
+      reportPeriod = millis() + 3000;
+      Serial.print("CounterL&CounterR=>");
+      Serial.print(counterL);
+      Serial.print("----");
+      Serial.println(counterR);
+      Serial.print("distanceF=>");
+      Serial.println(distanceF);
+      Serial.println("///////////////////////////////");
+      Serial.print("distanceL=>");
+      Serial.println(distanceL);
+      Serial.print("LB1Analog=>");
+      Serial.println(Mot_AnaB1);
+      Serial.print("LB2Analog=>");
+      Serial.println(Mot_AnaB2);
+      Serial.println("///////////////////////////////");
+      Serial.print("distanceR=>");
+      Serial.println(distanceR);
+      Serial.print("RA1Analog=>");
+      Serial.println(Mot_AnaA1);
+      Serial.print("RA2Analog=>");
+      Serial.println(Mot_AnaA2);
+      Serial.println("================================");
+    }
+  }
+
+  void constforward() {
+    while (distanceR <= BiggerMagicNumber || distanceF >= MagicNumber) {
       ultrasonic(7);
       distanceL = distance;
+      ultrasonic(8);
+      distanceF = distance;
+      ultrasonic(13);
+      distanceR = distance;
+      if (distanceR >= BiggerMagicNumber) break;
+      else if (distanceF <= MagicNumber) break;
+
+      if (distanceR <= BiggerMagicNumber) {
+        if (distanceR <= 6) {
+          LED("WR");
+          stateTurn = 1;
+          if (distanceL + distanceR <= 35) {
+            Mot_AnaA2 = map(distanceL, 14, 10, 230, 255);
+            Mot_AnaB1 = map(distanceL, 10, 14, 210, 220);
+          } else {
+            Mot_AnaA2 = map(distanceR, 6, 2, 230, 255);
+            Mot_AnaB1 = map(distanceR, 2, 6, 210, 220);
+          }
+        } else if (distanceR > 6 && distanceR < 10) {
+          LED("WF");
+          Mot_AnaA2 = map(distanceR, 7, 9, 241, 255);  //R
+          Mot_AnaB1 = map(distanceR, 9, 7, 243, 253);  //L
+        } else if (distanceR >= 10) {
+          LED("WL");
+          stateTurn = 2;
+          if (distanceL + distanceR <= 35) {
+            Mot_AnaA2 = map(distanceL, 6, 2, 210, 220);
+            Mot_AnaB1 = map(distanceL, 2, 6, 230, 255);
+          } else {
+            Mot_AnaA2 = map(distanceR, 14, 10, 210, 220);
+            Mot_AnaB1 = map(distanceR, 10, 14, 230, 255);
+          }
+        }
+      } else {
+        Mot_AnaA2 = 246;
+        Mot_AnaB1 = 250;
+      }
+      if (Mot_AnaA2 >= 255) Mot_AnaA2 = 255;
+      else if (Mot_AnaA2 < 210) Mot_AnaA2 = 210;
+      if (Mot_AnaB1 >= 255) Mot_AnaB1 = 255;
+      else if (Mot_AnaB1 < 210) Mot_AnaB1 = 210;
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_A2, Mot_AnaA2);
+      analogWrite(Mot_B1, Mot_AnaB1);
+      analogWrite(Mot_B2, 0);
+      report();
     }
+    analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
+    analogWrite(Mot_B2, 0);
+  }
+
+  void constBackward() {
+    while (distanceL <= MagicNumber || distanceR <= MagicNumber) {
+      ultrasonic(7);
+      distanceL = distance;
+      ultrasonic(13);
+      distanceR = distance;
+      Mot_AnaA1 = 244;  //R
+      Mot_AnaB2 = 250;  //L
+      analogWrite(Mot_A1, Mot_AnaA1);
+      analogWrite(Mot_B2, Mot_AnaB2);
+      if (distanceL >= BiggerMagicNumber) break;
+      else if (distanceR >= BiggerMagicNumber) break;
+      report();
+    }
+
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_B2, 0);
+  }
+
+  void forward(int stepsR, int stepsL) {
+    LED("F");
+    Mot_AnaA1 = 0;
+    Mot_AnaA2 = 0;
+    Mot_AnaB1 = 0;
+    Mot_AnaB2 = 0;
+    counterL = 0;
+    counterR = 0;
+    while (stepsR > counterR || stepsL > counterL) {
+      if (stepsR > counterR) {
+        Mot_AnaA2 = 230;
+      } else {
+        Mot_AnaA1 = 100;
+        Mot_AnaA2 = 0;
+      }
+      if (stepsL > counterL) {
+        Mot_AnaB1 = 234;
+      } else {
+        Mot_AnaB1 = 0;
+        Mot_AnaB2 = 100;
+      }
+
+      analogWrite(Mot_A2, Mot_AnaA2);
+      analogWrite(Mot_B1, Mot_AnaB1);
+      analogWrite(Mot_A1, Mot_AnaA1);
+      analogWrite(Mot_B2, Mot_AnaB2);
+      report();
+    }
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_B2, 0);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    Mot_AnaA1 = 0;
+    Mot_AnaA2 = 0;
+    Mot_AnaB1 = 0;
+    Mot_AnaB2 = 0;
+    counterL = 0;
+    counterR = 0;
+  }
+
+  void backward(int stepsR, int stepsL) {
+    counterL = 0;
+    counterR = 0;
+    while (stepsR > counterR || stepsL > counterL) {
+      if (stepsR > counterR) {
+        Mot_AnaA1 = 244;
+      } else {
+        Mot_AnaA1 = 0;
+      }
+      if (stepsL > counterL) {
+        Mot_AnaB2 = 250;
+      } else {
+        Mot_AnaB2 = 0;
+      }
+      analogWrite(Mot_A1, Mot_AnaA1);
+      analogWrite(Mot_B2, Mot_AnaB2);
+      report();
+    }
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_B2, 0);
+    counterL = 0;
+    counterR = 0;
+  }
+
+  void left() {
     delay(MagicDelay);
-    backward(18, 18);
-    return;
-  } else {
-    LED("DetectF");
-    analogWrite(Mot_A2, 246);
-    analogWrite(Mot_B1, 250);
-    if (dir == "left") {
+    int steps = 16;
+    counterL = 0;
+    counterR = 0;
+    while (steps > counterR) {
+      if (steps > counterR) {
+        Mot_AnaA2 = 215;
+      } else {
+        Mot_AnaA2 = 0;
+      }
+      analogWrite(Mot_A2, Mot_AnaA2);
+      report();
+    }
+    analogWrite(Mot_A2, 210);
+    delay(88);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B2, 0);
+    counterL = 0;
+    counterR = 0;
+  }
+
+  void right() {
+    delay(MagicDelay);
+    int steps = 15;
+    counterL = 0;
+    counterR = 0;
+    while (steps > counterL) {
+      if (steps > counterL) {
+        Mot_AnaB1 = 210;
+      } else {
+        Mot_AnaB1 = 0;
+      }
+      analogWrite(Mot_B1, Mot_AnaB1);
+      report();
+    }
+    analogWrite(Mot_B1, 210);
+    delay(88);
+    analogWrite(Mot_B1, 0);
+    counterL = 0;
+    counterR = 0;
+  }
+
+  void turncalibrate(String advancedir, String dir) {
+    if (advancedir == "forward") {
+      int Mot_AlaR = 245;
+      int Mot_AlaL = 252;
+      analogWrite(Mot_A1, Mot_AlaR);
+      analogWrite(Mot_B2, Mot_AlaL);
+      if (dir == "left") {
+        while (distanceL >= BiggerMagicNumber) {
+          ultrasonic(7);
+          distanceL = distance;
+        }
+      } else if (dir == "right") {
+        while (distanceR >= BiggerMagicNumber) {
+          ultrasonic(13);
+          distanceR = distance;
+        }
+      }
+      analogWrite(Mot_A1, 0);
+      analogWrite(Mot_B2, 0);
+      delay(200);
+      ultrasonic(8);
+      distanceF = distance;
+      if (distanceF <= 30) {
+        LED("Detect");
+        analogWrite(Mot_A2, 246);
+        analogWrite(Mot_B1, 250);
+        while (distanceF > 14) {
+          ultrasonic(8);
+          distanceF = distance;
+        }
+      } else {
+        LED("F");
+        forward(14, 14);
+      }
+      analogWrite(Mot_A2, 0);
+      analogWrite(Mot_B1, 0);
+      delay(MagicDelay);
+      return;
+    } else if (advancedir == "backward") {
+      int Mot_AlaR = 250;
+      int Mot_AlaL = 253;
+      analogWrite(Mot_A2, Mot_AlaR);
+      analogWrite(Mot_B1, Mot_AlaL);
       while (distanceL >= BiggerMagicNumber) {
         ultrasonic(7);
         distanceL = distance;
       }
-    } else if (dir == "right") {
-      while (distanceR >= BiggerMagicNumber) {
-        ultrasonic(13);
-        distanceR = distance;
+      analogWrite(Mot_A2, 0);
+      analogWrite(Mot_B1, 0);
+      delay(MagicDelay);
+      backward(18, 18);
+      return;
+    } else {
+      LED("DetectF");
+      analogWrite(Mot_A2, 246);
+      analogWrite(Mot_B1, 250);
+      if (dir == "left") {
+        while (distanceL >= BiggerMagicNumber) {
+          ultrasonic(7);
+          distanceL = distance;
+        }
+      } else if (dir == "right") {
+        while (distanceR >= BiggerMagicNumber) {
+          ultrasonic(13);
+          distanceR = distance;
+        }
       }
+      analogWrite(Mot_A2, 0);
+      analogWrite(Mot_B1, 0);
+      delay(MagicDelay);
+      forward(12, 12);
+      return;
     }
-    analogWrite(Mot_A2, 0);
-    analogWrite(Mot_B1, 0);
-    delay(MagicDelay);
-    forward(12, 12);
-    return;
   }
-}
