@@ -1,30 +1,57 @@
-
-#include <DHT11.h>
+#include <Adafruit_NeoPixel.h>
 
 //PIN (Digital)
-const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
-const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
-const int Mot_R1 = 3, Mot_R2 = 2;   //RPM Sensor
-int trig, echo;          //Ultrasonic
-const int Grab = 4;                 //Claw
-const int ServoMot = 10;            //Neck Servo
-//7,8,13 Reserved for ultrasonic sensors' echo pins
-//
+#define Mot_A1 9
+#define Mot_A2 6  //Right Motor (PWM)
+#define Mot_B1 5
+#define Mot_B2 11  //Left Motor (PWM)
+#define Mot_R1 3
+#define Mot_R2 2  //RPM Sensor
+
+#define trigLR A5  //trigger for L and R is shared
+#define trigF 12
+#define echoL 7  //Ultrasonic
+#define echoF 8
+#define echoR 13
+
+#define Grab A4  //Claw
+#define Neo 10   //LED pin
+#define Radar 4  //Radar pin
+
+#define MagicNumber 15
+#define BiggerMagicNumber 25
+#define MagicDelay 100
+#define LEDCount 4
+int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 //PIN (Analog)
-const int D1 = A0, D3 = A1, D4 = A2;
-const int D5 = A3, D6 = A6, D8 = A7;  //For IR B&W Sensor
+#define D1 A0
+#define D3 A1
+#define D4 A2
+#define D5 A3
+#define D6 A6
+#define D8 A7  //For IR B&W Sensor
 //
 
-DHT11 dht11(1);  //DHT's PIN
-int temp;        //For recording Temp
+Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
-unsigned long currenttime, refreshtime;  //For millis() functions
-int duration, distance;                  //For Ultrasonic functions
+unsigned long currenttime, refreshtime, reportPeriod;  //For millis() functions
+int duration, distance;                                //For Ultrasonic functions
+float distancePL, distancePR;
 unsigned int counterR, counterL;
-
 int distanceR, distanceL, distanceF;
+int SmolAngle;
+
+
 int pulseWidth;
+
+bool stateServo = false, ranOnce = false;
+int stateTurn;
+int Black, White;
+bool starting = false, BnWstate = false, ending = false;
+int A, B, C, D, E, F;
+int echo, trig;
+bool backCali;
 
 void setup() {
   // put your setup code here, to run once:
@@ -39,48 +66,57 @@ void setup() {
   pinMode(D5, INPUT);
   pinMode(D6, INPUT);
   pinMode(D8, INPUT);
-  pinMode(ServoMot, OUTPUT);
 
-  pinMode(12, OUTPUT);
-  pinMode(A4, OUTPUT);
-  pinMode(A5, OUTPUT);
-  pinMode(13, INPUT);
-  pinMode(7, INPUT);
-  pinMode(8, INPUT);
+  pinMode(trigLR, OUTPUT);
+  pinMode(trigF, OUTPUT);
+  pinMode(echoL, INPUT);
+  pinMode(echoF, INPUT);
+  pinMode(echoR, INPUT);
 
   pinMode(Grab, OUTPUT);
+  pinMode(Radar, OUTPUT);
 
-  temp = dht11.readTemperature();
-  delay(1000);
+  pixels.begin();
   Serial.begin(9600);
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  ultrasonic(13);
-  distanceR = distance;
-  ultrasonic(8);  //Checking with different ultrasonic sensors,
-  distanceF = distance;
-  ultrasonic(7);         //But they all share same trigger pin,
-  distanceL = distance;  //So it saves pin resources.
+  ultrasonic("R");
+  ultrasonic("F");
+  ultrasonic("L");
 
   delay(500);
   Serial.println("Distance");
   Serial.println(distanceR);
   Serial.println(distanceL);
-  Serial.println(distanceF);  
+  Serial.println(distanceF);
 }
 
-void ultrasonic(int echo) {
-  if (echo == 7 || echo == 13) trig = A5;
-  else if (echo == 8) trig = 12;
+void ultrasonic(String dir) {
+  float distanceP;
+  if (dir == "L" || dir == "R" || dir == "PreciseL" || dir == "PreciseR") {
+    trig = trigLR;
+    if (dir == "L" || dir == "PreciseL") echo = echoL;
+    else if (dir == "R" || dir == "PreciseR") echo = echoR;
+  } else if (dir == "F") {
+    trig = trigF;
+    echo = echoF;
+  }
   digitalWrite(trig, LOW);
   delay(5);
   digitalWrite(trig, HIGH);
   delay(10);
   digitalWrite(trig, LOW);
   duration = pulseIn(echo, HIGH);
-  delay(50);
-  distance = duration * (0.0331 + 0.0006 * temp) / 2;
-  if (distance >= 400) distance = 1;  //Maximum effective range of HC-SR04 is 400CM
+  delay(20);
+  if (dir == "L" || dir == "R" || dir == "F") distance = (duration * 0.0340 / 2);
+  if (dir == "PreciseL" || dir == "PreciseR") distanceP = (duration * 0.0340 / 2);
+  if (distance >= 400) distance = 1;  //Lock random value due to sensor is touching the wall
+  if (dir == "L") distanceL = distance;
+  else if (dir == "R") distanceR = distance;
+  else if (dir == "F") distanceF = distance;
+  else if (dir == "PreciseL") distancePL = distanceP;
+  else if (dir == "PreciseR") distancePR = distanceP;
 }

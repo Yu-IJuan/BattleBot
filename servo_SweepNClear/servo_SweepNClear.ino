@@ -77,7 +77,7 @@ void setup() {
 
 void loop() {
   servo("radar", 0);
-  delay(5000);
+  delay(200);
   radarGetAngle();
   Serial.println("radar, 30");
   servo("radar", SmolAngle);
@@ -94,18 +94,16 @@ void loop() {
 }
 
 void radarGetAngle() {
-  servo("radar", 30);
-  delay(200);
   float SmolDistanceL, SmolDistanceR;
   int SmolAngleL, SmolAngleR;
   SmolDistanceL = 30;
   SmolDistanceR = 30;
   for (int i = 0; i <= 10; i++) {
     int angle = i * 6;
-    delay(100);
     servo("radar", angle);
-    delay(200);
+    delay(100);
     ultrasonic("PreciseL");
+    delay(50);
     ultrasonic("PreciseR");
     Serial.print("DistanceL: ");
     Serial.println(distancePL);
