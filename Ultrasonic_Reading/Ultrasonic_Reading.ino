@@ -8,7 +8,8 @@
 #define Mot_R1 3
 #define Mot_R2 2  //RPM Sensor
 
-#define trigLR A5  //trigger for L and R is shared
+#define trigR A5  //trigger for L and R is shared
+#define trigL 0
 #define trigF 12
 #define echoL 7  //Ultrasonic
 #define echoF 8
@@ -36,10 +37,10 @@ int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
 unsigned long currenttime, refreshtime, reportPeriod;  //For millis() functions
-int duration, distance;                                //For Ultrasonic functions
+float duration, distance;                                //For Ultrasonic functions
 float distancePL, distancePR;
 unsigned int counterR, counterL;
-int distanceR, distanceL, distanceF;
+float distanceR, distanceL, distanceF;
 int SmolAngle;
 
 
@@ -67,7 +68,8 @@ void setup() {
   pinMode(D6, INPUT);
   pinMode(D8, INPUT);
 
-  pinMode(trigLR, OUTPUT);
+  pinMode(trigR, OUTPUT);
+  pinMode(trigL, OUTPUT);
   pinMode(trigF, OUTPUT);
   pinMode(echoL, INPUT);
   pinMode(echoF, INPUT);
@@ -87,19 +89,20 @@ void loop() {
   ultrasonic("F");
   ultrasonic("L");
 
-  delay(500);
   Serial.println("Distance");
   Serial.println(distanceR);
-  Serial.println(distanceL);
   Serial.println(distanceF);
+  Serial.println(distanceL);
 }
 
 void ultrasonic(String dir) {
-  float distanceP;
-  if (dir == "L" || dir == "R" || dir == "PreciseL" || dir == "PreciseR") {
-    trig = trigLR;
-    if (dir == "L" || dir == "PreciseL") echo = echoL;
-    else if (dir == "R" || dir == "PreciseR") echo = echoR;
+  float distanceP = 0;
+  if (dir == "R") {
+    trig = trigR;
+    echo = echoR;
+  } else if (dir == "L") {
+    trig = trigL;
+    echo = echoL;
   } else if (dir == "F") {
     trig = trigF;
     echo = echoF;
@@ -111,12 +114,9 @@ void ultrasonic(String dir) {
   digitalWrite(trig, LOW);
   duration = pulseIn(echo, HIGH);
   delay(20);
-  if (dir == "L" || dir == "R" || dir == "F") distance = (duration * 0.0340 / 2);
-  if (dir == "PreciseL" || dir == "PreciseR") distanceP = (duration * 0.0340 / 2);
-  if (distance >= 400) distance = 1;  //Lock random value due to sensor is touching the wall
-  if (dir == "L") distanceL = distance;
-  else if (dir == "R") distanceR = distance;
-  else if (dir == "F") distanceF = distance;
-  else if (dir == "PreciseL") distancePL = distanceP;
-  else if (dir == "PreciseR") distancePR = distanceP;
+  distanceP = (duration * 0.0340 / 2);
+  if (distanceP >= 400) distanceP = 1;  //Lock random value due to sensor is touching the wall
+  if (dir == "L") distanceL = distanceP;
+  else if (dir == "R") distanceR = distanceP;
+  else if (dir == "F") distanceF = distanceP;
 }
