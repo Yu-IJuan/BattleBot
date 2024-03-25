@@ -8,7 +8,8 @@
 #define Mot_R1 3
 #define Mot_R2 2  //RPM Sensor
 
-#define trigLR A5  //trigger for L and R is shared
+#define trigR A5  //trigger for L and R is shared
+#define trigL 0
 #define trigF 12
 #define echoL 7  //Ultrasonic
 #define echoF 8
@@ -36,10 +37,9 @@ int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
 unsigned long currenttime = 0, refreshtime = 0, reportPeriod = 0;  //For millis() functions
-int duration = 0, distance = 0;                                    //For Ultrasonic functions
-float distancePL = 0, distancePR = 0;
+float duration = 0, distance = 0;                                    //For Ultrasonic functions
 unsigned int counterR = 0, counterL = 0;
-int distanceR = 0, distanceL = 0, distanceF = 0;
+float distanceR = 0, distanceL = 0, distanceF = 0;
 int SmolAngle = 0;
 
 
@@ -69,7 +69,8 @@ void setup() {
   pinMode(D6, INPUT);
   pinMode(D8, INPUT);
 
-  pinMode(trigLR, OUTPUT);
+  pinMode(trigL, OUTPUT);
+  pinMode(trigR, OUTPUT);
   pinMode(trigF, OUTPUT);
   pinMode(echoL, INPUT);
   pinMode(echoF, INPUT);
@@ -86,10 +87,14 @@ void setup() {
 }
 
 void loop() {
+  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
+  analogWrite(Mot_B2, 0);
   if (!started) {
     Serial.println("starting");
     LED("Start");
-    servo("grab", 80);
+    servo("grab", 90);
     delay(1000);
     calibrateLight();
     followLine("before");
@@ -171,65 +176,98 @@ void ISR_L() {
 
 void followLine(String dir) {
   readAnalogs();
-  analogWrite(Mot_A2, 213);
+  analogWrite(Mot_A2, 216);
   analogWrite(Mot_B1, 210);
+  delay(500);
   Serial.println("followLine");
   if (dir == "before") {
-    while (B > Black || C > Black || D > Black || E > Black && A <= White && F < White) {
+    for (;;) {
       readAnalogs();
+      if (A > Black && F > Black) break;
+      if (C > Black && D > Black) {
+        analogWrite(Mot_A2, 247);
+        analogWrite(Mot_B1, 250);
+        Serial.println("CD");
+      } else if (B > Black || C > Black) {
+        analogWrite(Mot_A2, 214);
+        analogWrite(Mot_B1, 210);
+        Serial.println("BC");
+      } else if (D > Black || E > Black) {
+        analogWrite(Mot_A2, 242);
+        analogWrite(Mot_B1, 255);
+        Serial.println("DE");
+      }
+      printAnalogs();
     }
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
     Serial.println("Before");
     delay(1500);
     servo("grab", 30);
+    analogWrite(Mot_A2, 216);
+    analogWrite(Mot_B1, 210);
+    delay(450);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
     delay(1000);
     left();
     delay(1000);
     forward(6, 6);
     followLine("during");
   } else if ("during") {
-    while (A > Black || B > Black || C > Black || D > Black || E > Black || F > Black) {
+    for (;;) {
       readAnalogs();
       Serial.println("During");
       if (C > Black && D > Black) {
         analogWrite(Mot_A2, 247);
         analogWrite(Mot_B1, 250);
+        Serial.println("CD");
       } else if (B > Black || C > Black) {
         analogWrite(Mot_A2, 242);
         analogWrite(Mot_B1, 250);
+        Serial.println("BC");
       } else if (D > Black || E > Black) {
-        analogWrite(Mot_A2, 246);
-        analogWrite(Mot_B1, 254);
-      }
+        analogWrite(Mot_A2, 242);
+        analogWrite(Mot_B1, 255);
+        Serial.println("DE");
+      } else break;
+      printAnalogs();
     }
   }
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
 }
 
 void calibrateLight() {
   int tempBlack = 0, tempWhite = 0;
   int i = 0;
   while (i < 5) {
-    analogWrite(Mot_A2, 226);
-    analogWrite(Mot_B1, 220);
+    analogWrite(Mot_A2, 216);
+    analogWrite(Mot_B1, 210);
     Serial.println(i);
-    int average = (A + B + C + D + E + F) / 6;
     readAnalogs();
-    if (C > 600 && D > 600 && !BnWstate) {
+    int average = (C + D) / 2;
+    if (B > 700 && C > 700 && D > 700 && E > 700 && !BnWstate) {
       tempBlack = tempBlack + average;
       BnWstate = !BnWstate;
       i++;
-    } else if (C < 600 && D < 600 && BnWstate) {
+      Serial.println("Black: ");
+      Serial.println(tempBlack);
+      delay(100);
+    } else if (B < 600 && C < 600 && D < 600 && E < 600 && BnWstate) {
       tempWhite = tempWhite + average;
       BnWstate = !BnWstate;
       i++;
+      Serial.println("White: ");
+      Serial.println(tempWhite);
+      delay(100);
     }
   }
 
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
-  White = tempWhite / 2 + 200;
-  Black = tempBlack / 2 - 200;
+  White = tempWhite / 2 + 100;
+  Black = tempBlack / 3 - 100;
   Serial.print("White: ");
   Serial.println(White);
   Serial.print("Black: ");
@@ -245,6 +283,21 @@ void readAnalogs() {
   F = analogRead(D8);
 }
 
+void printAnalogs() {
+  Serial.print("A: ");
+  Serial.println(A);
+  Serial.print("B: ");
+  Serial.println(B);
+  Serial.print("C: ");
+  Serial.println(C);
+  Serial.print("D: ");
+  Serial.println(D);
+  Serial.print("E: ");
+  Serial.println(E);
+  Serial.print("F: ");
+  Serial.println(F);
+}
+
 void radarGetAngle(String dir) {
   float SmolDistanceL = 0, SmolDistanceR = 0;
   int SmolAngleL = 0, SmolAngleR = 0;
@@ -253,14 +306,12 @@ void radarGetAngle(String dir) {
   for (int i = 0; i <= 10; i++) {
     int angle = i * 6;
     servo("radar", angle);
-    delay(100);
-    ultrasonic("PreciseL");
-    delay(50);
-    ultrasonic("PreciseR");
+    ultrasonic("L");
+    ultrasonic("R");
     Serial.print("DistanceL: ");
-    Serial.println(distancePL);
+    Serial.println(distanceL);
     Serial.print("DistanceR: ");
-    Serial.println(distancePR);
+    Serial.println(distanceR);
     if (distancePL < SmolDistanceL) {
       SmolDistanceL = distancePL;
       SmolAngleL = map(angle, 0, 60, 30, -30);
@@ -329,10 +380,12 @@ void radarGetAngle(String dir) {
 
 void ultrasonic(String dir) {
   float distanceP = 0;
-  if (dir == "L" || dir == "R" || dir == "PreciseL" || dir == "PreciseR") {
-    trig = trigLR;
-    if (dir == "L" || dir == "PreciseL") echo = echoL;
-    else if (dir == "R" || dir == "PreciseR") echo = echoR;
+  if (dir == "R") {
+    trig = trigR;
+    echo = echoR;
+  } else if (dir == "L") {
+    trig = trigL;
+    echo = echoL;
   } else if (dir == "F") {
     trig = trigF;
     echo = echoF;
@@ -344,14 +397,11 @@ void ultrasonic(String dir) {
   digitalWrite(trig, LOW);
   duration = pulseIn(echo, HIGH);
   delay(20);
-  if (dir == "L" || dir == "R" || dir == "F") distance = (duration * 0.0340 / 2);
-  if (dir == "PreciseL" || dir == "PreciseR") distanceP = (duration * 0.0340 / 2);
+  distanceP = (duration * 0.0340 / 2);
   if (distance >= 400) distance = 1;  //Lock random value due to sensor is touching the wall
-  if (dir == "L") distanceL = distance;
-  else if (dir == "R") distanceR = distance;
-  else if (dir == "F") distanceF = distance;
-  else if (dir == "PreciseL") distancePL = distanceP;
-  else if (dir == "PreciseR") distancePR = distanceP;
+  if (dir == "L") distanceL = distanceP;
+  else if (dir == "R") distanceR = distanceP;
+  else if (dir == "F") distanceF = distanceP;
 }
 
 void servo(String var, int angle) {
@@ -492,7 +542,7 @@ void constforward() {
         Mot_AnaB1 = map(distanceR, 12, 9, 243, 253);  //L
       } else if (distanceR >= 13) {
         LED("WL");
-        stateTurn = 2;
+        stateTurn = 1;
         if (distanceL + distanceR <= 35) {
           Mot_AnaA2 = map(distanceL, 8, 2, 210, 220);
           Mot_AnaB1 = map(distanceL, 2, 8, 230, 255);
@@ -609,7 +659,7 @@ void backward(int stepsR, int stepsL) {
 
 void left() {
   delay(MagicDelay);
-  int steps = 34;
+  int steps = 35;
   counterL = 0;
   counterR = 0;
   while (steps > counterR) {
