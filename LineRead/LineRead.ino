@@ -66,10 +66,17 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  Serial.print("A: ");
   Serial.println(analogRead(D1));
+  Serial.print("B: ");
   Serial.println(analogRead(D3));
+  Serial.print("C: ");
   Serial.println(analogRead(D4));
+  Serial.print("D: ");
   Serial.println(analogRead(D5));
+  Serial.print("E: ");
   Serial.println(analogRead(D6));
+  Serial.print("F: ");
   Serial.println(analogRead(D8));
+  Serial.println("=======================================");
 }
