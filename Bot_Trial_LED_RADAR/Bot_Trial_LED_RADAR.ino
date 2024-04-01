@@ -1,4 +1,8 @@
 #include <Adafruit_NeoPixel.h>
+#include <MemoryFree.h>
+
+//Forward HIGH R 220, L 255; MEDIUM R 210, L 235; LOW R 200, L 225
+//Backward HIGH R 200, L 255; MEDIUM R 175, L 245
 
 //PIN (Digital)
 #define Mot_A1 9
@@ -9,14 +13,14 @@
 #define Mot_R2 2  //RPM Sensor
 
 #define trigR A5  //trigger for L and R is shared
-#define trigL 0
+#define trigL 10
 #define trigF 12
 #define echoL 7  //Ultrasonic
 #define echoF 8
 #define echoR 13
 
 #define Grab A4  //Claw
-#define Neo 10   //LED pin
+#define Neo 0   //LED pin
 #define Radar 4  //Radar pin
 
 #define MagicNumber 15
@@ -36,16 +40,14 @@ int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
-unsigned long currenttime = 0, refreshtime = 0, reportPeriod = 0;  //For millis() functions
-float duration = 0, distance = 0;                                    //For Ultrasonic functions
+unsigned long reportPeriod = 0;    //For millis() functions
+unsigned long distanceR = 0, distanceF = 0, distanceL = 0;
 unsigned int counterR = 0, counterL = 0;
-float distanceR = 0, distanceL = 0, distanceF = 0;
 int SmolAngle = 0;
 
 
 int pulseWidth = 0;
 
-bool stateServo = false, ranOnce = false;
 int stateTurn = 0;
 int Black = 0, White = 0;
 bool starting = false, BnWstate = false, ending = false;
@@ -80,7 +82,7 @@ void setup() {
   pinMode(Radar, OUTPUT);
 
   pixels.begin();
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, CHANGE);
   attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, CHANGE);
@@ -92,7 +94,8 @@ void loop() {
   analogWrite(Mot_B1, 0);
   analogWrite(Mot_B2, 0);
   if (!started) {
-    Serial.println("starting");
+    LEDbeforestart();
+    Serial.println(F("starting"));
     LED("Start");
     servo("grab", 90);
     delay(1000);
@@ -145,9 +148,7 @@ void loop() {
         right();
         delay(MagicDelay);
         ultrasonic("R");
-        distanceR = distance;
         ultrasonic("F");
-        distanceF = distance;
         if (distanceR >= BiggerMagicNumber) {
           LED("R");
           right();
@@ -168,45 +169,55 @@ void loop() {
 
 void ISR_R() {
   counterR++;
+  Serial.print(counterR);
 }
 
 void ISR_L() {
   counterL++;
+  Serial.println(counterL);
 }
 
 void followLine(String dir) {
   readAnalogs();
-  analogWrite(Mot_A2, 216);
-  analogWrite(Mot_B1, 210);
+  analogWrite(Mot_A2, 220);
+  analogWrite(Mot_B1, 255);
   delay(500);
-  Serial.println("followLine");
+  Serial.println(F("followLine"));
   if (dir == "before") {
     for (;;) {
       readAnalogs();
       if (A > Black && F > Black) break;
-      if (C > Black && D > Black) {
-        analogWrite(Mot_A2, 247);
-        analogWrite(Mot_B1, 250);
-        Serial.println("CD");
-      } else if (B > Black || C > Black) {
-        analogWrite(Mot_A2, 214);
-        analogWrite(Mot_B1, 210);
-        Serial.println("BC");
-      } else if (D > Black || E > Black) {
-        analogWrite(Mot_A2, 242);
+      else if (C > Black && D > Black) {
+        analogWrite(Mot_A2, 220);
         analogWrite(Mot_B1, 255);
-        Serial.println("DE");
+        Serial.println(F("CD"));
+      } else if (B > Black && C > Black) {
+        analogWrite(Mot_A2, 230);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("BC"));
+      } else if (D > Black && E > Black) {
+        analogWrite(Mot_A2, 210);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("DE"));
+      } else if (B > Black) {
+        analogWrite(Mot_A2, 240);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("A"));
+      } else if (E > Black) {
+        analogWrite(Mot_A2, 200);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("A"));
       }
       printAnalogs();
     }
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
-    Serial.println("Before");
+    Serial.println(F("Before"));
     delay(1500);
     servo("grab", 30);
-    analogWrite(Mot_A2, 216);
-    analogWrite(Mot_B1, 210);
-    delay(450);
+    analogWrite(Mot_A2, 220);
+    analogWrite(Mot_B1, 255);
+    delay(370);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
     delay(1000);
@@ -217,19 +228,35 @@ void followLine(String dir) {
   } else if ("during") {
     for (;;) {
       readAnalogs();
-      Serial.println("During");
+      Serial.println(F("During"));
       if (C > Black && D > Black) {
-        analogWrite(Mot_A2, 247);
-        analogWrite(Mot_B1, 250);
-        Serial.println("CD");
-      } else if (B > Black || C > Black) {
-        analogWrite(Mot_A2, 242);
-        analogWrite(Mot_B1, 250);
-        Serial.println("BC");
-      } else if (D > Black || E > Black) {
-        analogWrite(Mot_A2, 242);
+        analogWrite(Mot_A2, 220);
         analogWrite(Mot_B1, 255);
-        Serial.println("DE");
+        Serial.println(F("CD"));
+      } else if (B > Black && C > Black) {
+        analogWrite(Mot_A2, 230);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("BC"));
+      } else if (D > Black && E > Black) {
+        analogWrite(Mot_A2, 210);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("DE"));
+      } else if (B > Black) {
+        analogWrite(Mot_A2, 240);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("A"));
+      } else if (E > Black) {
+        analogWrite(Mot_A2, 200);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("A"));
+      } else if (A > Black) {
+        analogWrite(Mot_A2, 220);
+        analogWrite(Mot_B1, 0);
+        Serial.println(F("A"));
+      } else if (F > Black) {
+        analogWrite(Mot_A2, 0);
+        analogWrite(Mot_B1, 255);
+        Serial.println(F("F"));
       } else break;
       printAnalogs();
     }
@@ -238,27 +265,72 @@ void followLine(String dir) {
   analogWrite(Mot_B1, 0);
 }
 
+void LEDbeforestart() {
+  int rVal, gVal;
+  unsigned long currentTime = millis();
+  for (;;) {
+    readAnalogs();
+    if ((A + F / 2) <= 512) {
+      rVal = (0.501 * (A + F / 2)) - 0.501;
+      gVal = 255;
+    } else if ((A + F) / 2 > 512) {
+      rVal = 255;
+      gVal = (-0.502 * (A + F / 2)) + 513.51;
+    }
+    if (millis() - currentTime >= 250) pixels.setPixelColor(0, pixels.Color(rVal, gVal, 0));
+    if (millis() - currentTime >= 500) pixels.setPixelColor(1, pixels.Color(rVal, gVal, 0));
+    if (millis() - currentTime >= 750) pixels.setPixelColor(2, pixels.Color(rVal, gVal, 0));
+    if (millis() - currentTime >= 1000) pixels.setPixelColor(3, pixels.Color(rVal, gVal, 0));
+    if (millis() - currentTime >= 1250) break;
+
+    pixels.show();
+  }
+}
+
 void calibrateLight() {
   int tempBlack = 0, tempWhite = 0;
+  counterL = 0;
+  counterR = 0;
+  int steps = 0;
   int i = 0;
   while (i < 5) {
-    analogWrite(Mot_A2, 216);
-    analogWrite(Mot_B1, 210);
-    Serial.println(i);
     readAnalogs();
     int average = (C + D) / 2;
+    while (steps > counterR && steps > counterL) {
+      if (steps > counterR) {
+        analogWrite(Mot_A2, 220);
+      } else {
+        analogWrite(Mot_A2, 0);
+      }
+      if (steps > counterL) {
+        analogWrite(Mot_B1, 255);
+      } else {
+        analogWrite(Mot_B1, 0);
+      }
+      Serial.print(counterR);
+      Serial.print(counterL);
+    }
+    Serial.println();
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
     if (B > 700 && C > 700 && D > 700 && E > 700 && !BnWstate) {
       tempBlack = tempBlack + average;
       BnWstate = !BnWstate;
       i++;
-      Serial.println("Black: ");
+      counterL = 0;
+      counterR = 0;
+      steps = 12;
+      Serial.println(F("Temp Black Total: "));
       Serial.println(tempBlack);
       delay(100);
     } else if (B < 600 && C < 600 && D < 600 && E < 600 && BnWstate) {
       tempWhite = tempWhite + average;
       BnWstate = !BnWstate;
       i++;
-      Serial.println("White: ");
+      counterL = 0;
+      counterR = 0;
+      steps = 12;
+      Serial.println(F("Temp White Total: "));
       Serial.println(tempWhite);
       delay(100);
     }
@@ -268,7 +340,7 @@ void calibrateLight() {
   analogWrite(Mot_B1, 0);
   White = tempWhite / 2 + 100;
   Black = tempBlack / 3 - 100;
-  Serial.print("White: ");
+  Serial.print(F("White: "));
   Serial.println(White);
   Serial.print("Black: ");
   Serial.println(Black);
@@ -284,17 +356,17 @@ void readAnalogs() {
 }
 
 void printAnalogs() {
-  Serial.print("A: ");
+  Serial.print(F("A: "));
   Serial.println(A);
-  Serial.print("B: ");
+  Serial.print(F("B: "));
   Serial.println(B);
-  Serial.print("C: ");
+  Serial.print(F("C: "));
   Serial.println(C);
-  Serial.print("D: ");
+  Serial.print(F("D: "));
   Serial.println(D);
-  Serial.print("E: ");
+  Serial.print(F("E: "));
   Serial.println(E);
-  Serial.print("F: ");
+  Serial.print(F("F: "));
   Serial.println(F);
 }
 
@@ -308,78 +380,78 @@ void radarGetAngle(String dir) {
     servo("radar", angle);
     ultrasonic("L");
     ultrasonic("R");
-    Serial.print("DistanceL: ");
+    Serial.print(F("DistanceL: "));
     Serial.println(distanceL);
-    Serial.print("DistanceR: ");
+    Serial.print(F("DistanceR: "));
     Serial.println(distanceR);
-    if (distancePL < SmolDistanceL) {
-      SmolDistanceL = distancePL;
+    if (distanceL < SmolDistanceL) {
+      SmolDistanceL = distanceL;
       SmolAngleL = map(angle, 0, 60, 30, -30);
       Serial.println(".");
     }
-    if (distancePR < SmolDistanceR) {
-      SmolDistanceR = distancePR;
+    if (distanceR < SmolDistanceR) {
+      SmolDistanceR = distanceR;
       SmolAngleR = map(angle, 0, 60, -30, 30);
-      Serial.println(".");
+      Serial.println(F("."));
     }
-    Serial.print("angle: ");
+    Serial.print(F("angle: "));
     Serial.println(map(angle, 0, 60, 30, -30));
     servo("radar", 30);
   }
   if (dir == "double") {
     if (SmolDistanceR <= 0 || SmolDistanceL <= 0 || SmolAngleR > 30 || SmolAngleR < -30 || SmolAngleL > 30 || SmolAngleL < -30) {
-      Serial.println("==============================");
-      Serial.println("=================TEST INVAID================");
-      Serial.println("==============================");
+      Serial.println(F("=============================="));
+      Serial.println(F("=================TEST INVAID================"));
+      Serial.println(F("=============================="));
       radarGetAngle("double");
     } else if (SmolAngleR + SmolAngleL > 12) {
-      Serial.println("==============================");
-      Serial.print("SmolAngleL: ");
+      Serial.println(F("=============================="));
+      Serial.print(F("SmolAngleL: "));
       Serial.println(SmolAngleL);
-      Serial.print("DistanceL: ");
+      Serial.print(F("DistanceL: "));
       Serial.println(SmolDistanceL);
-      Serial.print("SmolAngleR: ");
+      Serial.print(F("SmolAngleR: "));
       Serial.println(SmolAngleR);
-      Serial.print("DistanceR: ");
+      Serial.print(F("DistanceR: "));
       Serial.println(SmolDistanceR);
-      Serial.println("==============================");
-      Serial.print("Error By: ");
+      Serial.println(F("=============================="));
+      Serial.print(F("Error By: "));
       Serial.println(SmolAngleR + SmolAngleL);
       delay(200);
       radarGetAngle("double");
     } else SmolAngle = map(SmolAngleL, 30, -30, 0, 60);
   } else if (dir == "singleL") {
     if (SmolDistanceL <= 0 || SmolAngleL > 30 || SmolAngleL < -30) {
-      Serial.println("==============================");
-      Serial.println("=================TEST INVAID================");
-      Serial.println("==============================");
+      Serial.println(F("=============================="));
+      Serial.println(F("=================TEST INVAID================"));
+      Serial.println(F("=============================="));
       radarGetAngle("singleL");
     }
   } else if (dir == "singleR") {
     if (SmolDistanceR <= 0 || SmolAngleR > 30 || SmolAngleR < -30) {
-      Serial.println("==============================");
-      Serial.println("=================TEST INVAID================");
-      Serial.println("==============================");
+      Serial.println(F("=============================="));
+      Serial.println(F("=================TEST INVAID================"));
+      Serial.println(F("=============================="));
       radarGetAngle("singleR");
     }
   }
 
-  Serial.println("===============TESTING COMPLETE===============");
-  Serial.print("SmolAngleL: ");
+  Serial.println(F("===============TESTING COMPLETE==============="));
+  Serial.print(F("SmolAngleL: "));
   Serial.println(SmolAngleL);
-  Serial.print("DistanceL: ");
+  Serial.print(F("DistanceL: "));
   Serial.println(SmolDistanceL);
-  Serial.print("SmolAngleR: ");
+  Serial.print(F("SmolAngleR: "));
   Serial.println(SmolAngleR);
-  Serial.print("DistanceR: ");
+  Serial.print(F("DistanceR: "));
   Serial.println(SmolDistanceR);
-  Serial.print("SmolAngle: ");
+  Serial.print(F("SmolAngle: "));
   Serial.println(SmolAngleL);
-  Serial.println("==============================");
+  Serial.println(F("=============================="));
 }
 
 void ultrasonic(String dir) {
-  float distanceP = 0;
+  float distanceP = 0, distance = 0, duration = 0;
   if (dir == "R") {
     trig = trigR;
     echo = echoR;
@@ -390,15 +462,24 @@ void ultrasonic(String dir) {
     trig = trigF;
     echo = echoF;
   }
-  digitalWrite(trig, LOW);
-  delay(5);
-  digitalWrite(trig, HIGH);
-  delay(10);
-  digitalWrite(trig, LOW);
-  duration = pulseIn(echo, HIGH);
-  delay(20);
-  distanceP = (duration * 0.0340 / 2);
-  if (distance >= 400) distance = 1;  //Lock random value due to sensor is touching the wall
+  float distanceTemp = 0.0;
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(trig, LOW);
+    delay(5);
+    digitalWrite(trig, HIGH);
+    delay(10);
+    digitalWrite(trig, LOW);
+    duration = pulseIn(echo, HIGH);
+    delay(20);
+    distance = (duration * 0.0340 / 2);
+    if (distance >= 400) distance = 400;
+    if (distance == 1) i = i - 1;
+    else {
+      distanceTemp = distanceTemp + distance;
+    }
+    Serial.print(i);
+  }
+  distanceP = distanceTemp / 3;
   if (dir == "L") distanceL = distanceP;
   else if (dir == "R") distanceR = distanceP;
   else if (dir == "F") distanceF = distanceP;
@@ -432,19 +513,19 @@ void LED(String dir) {
     pixels.setPixelColor(1, pixels.Color(140, 255, 0));
     pixels.setPixelColor(2, pixels.Color(140, 255, 0));
     pixels.setPixelColor(3, pixels.Color(255, 0, 0));
-    Serial.println("R");
+    Serial.println(F("R"));
 
   } else if (dir == "B") {
     pixels.setPixelColor(0, pixels.Color(255, 255, 255));
     pixels.setPixelColor(1, pixels.Color(255, 255, 255));
     pixels.setPixelColor(2, pixels.Color(255, 0, 0));
     pixels.setPixelColor(3, pixels.Color(255, 0, 0));
-    Serial.println("B");
+    Serial.println(F("B"));
   } else if (dir == "F") {
-    for (int i = 0; i < Neo; i++) {
+    for (int i = 0; i < LEDCount; i++) {
       pixels.setPixelColor(i, pixels.Color(255, 0, 0));
     }
-    Serial.println("F");
+    Serial.println(F("F"));
   } else if (dir == "WL") {
     pixels.setPixelColor(0, pixels.Color(255, 0, 0));
     pixels.setPixelColor(1, pixels.Color(255, 255, 255));
@@ -477,34 +558,36 @@ void LED(String dir) {
     pixels.setPixelColor(3, pixels.Color(255, 255, 255));
   }
   pixels.show();
-  servo("radar", 30);
   servo("grab", 30);
 }
 
 void report() {
   if (millis() >= reportPeriod) {
     reportPeriod = millis() + 3000;
-    Serial.print("CounterL&CounterR=>");
+    Serial.print(F("CounterL&CounterR=>"));
     Serial.print(counterL);
-    Serial.print("----");
+    Serial.print(F("----"));
     Serial.println(counterR);
-    Serial.print("distanceF=>");
+    Serial.print(F("distanceF=>"));
     Serial.println(distanceF);
-    Serial.println("///////////////////////////////");
-    Serial.print("distanceL=>");
+    Serial.println(F("///////////////////////////////"));
+    Serial.print(F("distanceL=>"));
     Serial.println(distanceL);
-    Serial.print("LB1Analog=>");
+    Serial.print(F("LB1Analog=>"));
     Serial.println(Mot_AnaB1);
-    Serial.print("LB2Analog=>");
+    Serial.print(F("LB2Analog=>"));
     Serial.println(Mot_AnaB2);
-    Serial.println("///////////////////////////////");
-    Serial.print("distanceR=>");
+    Serial.println(F("///////////////////////////////"));
+    Serial.print(F("distanceR=>"));
     Serial.println(distanceR);
-    Serial.print("RA1Analog=>");
+    Serial.print(F("RA1Analog=>"));
     Serial.println(Mot_AnaA1);
-    Serial.print("RA2Analog=>");
+    Serial.print(F("RA2Analog=>"));
     Serial.println(Mot_AnaA2);
-    Serial.println("================================");
+    Serial.println(F("================================"));
+    Serial.print(F("Free Memory: "));
+    Serial.println(freeMemory());
+    Serial.println(F("================================"));
   }
 }
 
@@ -522,10 +605,10 @@ void constforward() {
         stateTurn = 1;
         if (distanceL + distanceR <= 35) {
           Mot_AnaA2 = map(distanceL, 20, 13, 230, 255);
-          Mot_AnaB1 = map(distanceL, 13, 20, 210, 220);
+          Mot_AnaB1 = map(distanceL, 13, 20, 200, 210);
         } else {
           Mot_AnaA2 = map(distanceR, 8, 2, 230, 255);
-          Mot_AnaB1 = map(distanceR, 2, 8, 210, 220);
+          Mot_AnaB1 = map(distanceR, 2, 8, 200, 210);
         }
       } else if (distanceR > 8 && distanceR < 13) {
         LED("WF");
@@ -538,16 +621,16 @@ void constforward() {
           rotate(SmolAngle);
           stateTurn = 0;
         }
-        Mot_AnaA2 = map(distanceR, 9, 12, 241, 255);  //R
-        Mot_AnaB1 = map(distanceR, 12, 9, 243, 253);  //L
+        Mot_AnaA2 = map(distanceR, 9, 12, 218, 222);  //R
+        Mot_AnaB1 = map(distanceR, 12, 9, 233, 237);  //L
       } else if (distanceR >= 13) {
         LED("WL");
         stateTurn = 1;
         if (distanceL + distanceR <= 35) {
-          Mot_AnaA2 = map(distanceL, 8, 2, 210, 220);
+          Mot_AnaA2 = map(distanceL, 8, 2, 200, 210);
           Mot_AnaB1 = map(distanceL, 2, 8, 230, 255);
         } else {
-          Mot_AnaA2 = map(distanceR, 20, 13, 210, 220);
+          Mot_AnaA2 = map(distanceR, 20, 13, 200, 210);
           Mot_AnaB1 = map(distanceR, 13, 20, 230, 255);
         }
       }
@@ -555,15 +638,12 @@ void constforward() {
       Mot_AnaA2 = 246;
       Mot_AnaB1 = 250;
     }
-    if (Mot_AnaA2 >= 255) Mot_AnaA2 = 255;
-    else if (Mot_AnaA2 < 210) Mot_AnaA2 = 210;
-    if (Mot_AnaB1 >= 255) Mot_AnaB1 = 255;
-    else if (Mot_AnaB1 < 210) Mot_AnaB1 = 210;
-    analogWrite(Mot_A1, 0);
+    if (Mot_AnaA2 >= 255) analogWrite(Mot_A2, 255);
+    else if (Mot_AnaA2 < 200) analogWrite(Mot_A2, 200);
+    if (Mot_AnaB1 >= 255) analogWrite(Mot_B1, 255);
+    else if (Mot_AnaB1 < 200) analogWrite(Mot_B1, 200);
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B1, Mot_AnaB1);
-    analogWrite(Mot_B2, 0);
-    report();
   }
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_A2, 0);
@@ -580,8 +660,8 @@ void constBackward() {
   while (distanceL <= MagicNumber || distanceR <= MagicNumber) {
     ultrasonic("L");
     ultrasonic("R");
-    Mot_AnaA1 = 244;  //R
-    Mot_AnaB2 = 250;  //L
+    Mot_AnaA1 = 175;  //R
+    Mot_AnaB2 = 245;  //L
     analogWrite(Mot_A1, Mot_AnaA1);
     analogWrite(Mot_B2, Mot_AnaB2);
     if (distanceL >= BiggerMagicNumber) break;
@@ -601,24 +681,23 @@ void forward(int stepsR, int stepsL) {
   counterR = 0;
   stepsR = stepsR;
   stepsL = stepsL;
-  while (stepsR > counterR || stepsL > counterL) {
+  while (stepsR > counterR && stepsL > counterL) {
     if (stepsR > counterR) {
-      Mot_AnaA2 = 246;
+      Mot_AnaA2 = 200;
     } else {
       Mot_AnaA2 = 0;
     }
     if (stepsL > counterL) {
-      Mot_AnaB1 = 250;
+      Mot_AnaB1 = 225;
     } else {
       Mot_AnaB1 = 0;
     }
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B1, Mot_AnaB1);
-    Serial.print(counterL);
-    Serial.print("----");
     Serial.print(counterR);
+    Serial.print(counterL);
   }
-  Serial.println(" ");
+  Serial.println();
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
   Mot_AnaA2 = 0;
@@ -635,22 +714,21 @@ void backward(int stepsR, int stepsL) {
   stepsL = stepsL * 2;
   while (stepsR > counterR || stepsL > counterL) {
     if (stepsR > counterR) {
-      Mot_AnaA1 = 244;
+      Mot_AnaA1 = 200;
     } else {
       Mot_AnaA1 = 0;
     }
     if (stepsL > counterL) {
-      Mot_AnaB2 = 250;
+      Mot_AnaB2 = 225;
     } else {
       Mot_AnaB2 = 0;
     }
     analogWrite(Mot_A1, Mot_AnaA1);
     analogWrite(Mot_B2, Mot_AnaB2);
-    Serial.print(counterL);
-    Serial.print("----");
     Serial.print(counterR);
+    Serial.print(counterL);
   }
-  Serial.println(" ");
+  Serial.println();
   analogWrite(Mot_A1, 0);
   analogWrite(Mot_B2, 0);
   counterL = 0;
@@ -664,16 +742,14 @@ void left() {
   counterR = 0;
   while (steps > counterR) {
     if (steps > counterR) {
-      Mot_AnaA2 = 215;
+      analogWrite(Mot_A2, 235);
     } else {
-      Mot_AnaA2 = 0;
+      analogWrite(Mot_A2, 0);
     }
-    analogWrite(Mot_A2, Mot_AnaA2);
-    Serial.print(counterL);
-    Serial.print("----");
     Serial.print(counterR);
+    Serial.print(counterL);
   }
-  Serial.println(" ");
+  Serial.println();
   analogWrite(Mot_A2, 0);
   counterL = 0;
   counterR = 0;
@@ -686,16 +762,14 @@ void right() {
   counterR = 0;
   while (steps > counterL) {
     if (steps > counterL) {
-      Mot_AnaB1 = 210;
+      analogWrite(Mot_B1, 235);
     } else {
-      Mot_AnaB1 = 0;
+      analogWrite(Mot_B1, 0);
     }
-    analogWrite(Mot_B1, Mot_AnaB1);
-    Serial.print(counterL);
-    Serial.print("----");
     Serial.print(counterR);
+    Serial.print(counterL);
   }
-  Serial.println(" ");
+  Serial.println();
   analogWrite(Mot_B1, 0);
   counterL = 0;
   counterR = 0;
@@ -704,65 +778,55 @@ void right() {
 void rotate(int angle) {
   angle = map(angle, 0, 60, 30, -30);
   delay(MagicDelay);
-  Serial.print("Rotate: ");
+  Serial.print(F("Rotate: "));
   Serial.println(angle);
   counterL = 0;
   counterR = 0;
   if (angle > 0) {  //Making Right Rotate
     int steps = map(angle, 0, 30, 0, 5);
-    while (steps > counterR || steps > counterL) {
+    while (steps > counterR && steps > counterL) {
       if (steps > counterR) {
-        Mot_AnaA1 = 230;
+        analogWrite(Mot_A1, 220);
       } else {
-        Mot_AnaA1 = 0;
+        analogWrite(Mot_A1, 0);
       }
       if (steps > counterL) {
-        Mot_AnaB1 = 230;
+        analogWrite(Mot_B1, 255);
       } else {
-        Mot_AnaB1 = 0;
+        analogWrite(Mot_B1, 0);
       }
-      analogWrite(Mot_A1, Mot_AnaA1);
-      analogWrite(Mot_B1, Mot_AnaB1);
+      Serial.print(counterR);
       Serial.print(counterL);
-      Serial.print("----");
-      Serial.println(counterR);
     }
+    Serial.println();
     analogWrite(Mot_A1, 0);
-    analogWrite(Mot_A2, 0);
     analogWrite(Mot_B1, 0);
-    analogWrite(Mot_B2, 0);
   } else {
     int steps = map(angle, -30, 0, 5, 0);
-    while (steps > counterR || steps > counterL) {
+    while (steps > counterR && steps > counterL) {
       if (steps > counterR) {
-        Mot_AnaA2 = 230;
+        analogWrite(Mot_A2, 230);
       } else {
-        Mot_AnaA2 = 0;
+        analogWrite(Mot_A2, 0);
       }
       if (steps > counterL) {
-        Mot_AnaB2 = 230;
+        analogWrite(Mot_B2, 230);
       } else {
-        Mot_AnaB2 = 0;
+        analogWrite(Mot_B2, 0);
       }
-      analogWrite(Mot_A2, Mot_AnaA2);
-      analogWrite(Mot_B2, Mot_AnaB2);
+      Serial.print(counterR);
       Serial.print(counterL);
-      Serial.print("----");
-      Serial.println(counterR);
     }
-    analogWrite(Mot_A1, 0);
+    Serial.println();
     analogWrite(Mot_A2, 0);
-    analogWrite(Mot_B1, 0);
     analogWrite(Mot_B2, 0);
   }
 }
 
 void turncalibrate(String advancedir, String dir) {
   if (advancedir == "forward") {
-    int Mot_AlaR = 246;
-    int Mot_AlaL = 250;
-    analogWrite(Mot_A1, Mot_AlaR);
-    analogWrite(Mot_B2, Mot_AlaL);
+    analogWrite(Mot_A1, 220);
+    analogWrite(Mot_B2, 255);
     if (dir == "left") {
       while (distanceL >= BiggerMagicNumber) {
         ultrasonic("L");
@@ -778,8 +842,8 @@ void turncalibrate(String advancedir, String dir) {
     ultrasonic("F");
     if (distanceF <= 30) {
       LED("Detect");
-      analogWrite(Mot_A2, 248);
-      analogWrite(Mot_B1, 250);
+      analogWrite(Mot_A2, 220);
+      analogWrite(Mot_B1, 255);
       while (distanceF > 6) {
         ultrasonic("F");
       }
@@ -792,8 +856,8 @@ void turncalibrate(String advancedir, String dir) {
     delay(MagicDelay);
     return;
   } else if (advancedir == "backward") {
-    int Mot_AlaR = 246;
-    int Mot_AlaL = 250;
+    int Mot_AlaR = 175;
+    int Mot_AlaL = 245;
     analogWrite(Mot_A2, Mot_AlaR);
     analogWrite(Mot_B1, Mot_AlaL);
     while (distanceL >= BiggerMagicNumber) {
@@ -806,8 +870,8 @@ void turncalibrate(String advancedir, String dir) {
     return;
   } else {
     LED("DetectF");
-    analogWrite(Mot_A2, 246);
-    analogWrite(Mot_B1, 250);
+    analogWrite(Mot_A2, 220);
+    analogWrite(Mot_B1, 255);
     if (dir == "left") {
       while (distanceL >= BiggerMagicNumber) {
         ultrasonic("L");
