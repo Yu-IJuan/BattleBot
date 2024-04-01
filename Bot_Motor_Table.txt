@@ -1,0 +1,8 @@
+//Calibrated@100%
+
+//Forward HIGH R 245, L 255; 
+//Forward MEDIUM R 225, L 235;
+//Forward LOW R 212, L 225;
+
+//Backward HIGH R 225, L 255; 
+//Backward MEDIUM R 200, L 240;
