@@ -1,12 +1,12 @@
-#include <DHT11.h>
+
 
 //PIN (Digital)
-const int Mot_A1 = 9, Mot_A2 = 6;   //Right Motor (PWM)
-const int Mot_B1 = 5, Mot_B2 = 11;  //Left Motor (PWM)
-const int Mot_R1 = 3, Mot_R2 = 2;   //RPM Sensor (R/L)
-const int trig = 12, echo1 = 13, echo2 = 7, echo3 = 8;     //Ultrasonic
-const int Grab = 4;                 //Claw
-const int ServoMot = 10;            //Neck Servo
+const int Mot_A1 = 9, Mot_A2 = 6;                       //Right Motor (PWM)
+const int Mot_B1 = 5, Mot_B2 = 11;                      //Left Motor (PWM)
+const int Mot_R1 = 3, Mot_R2 = 2;                       //RPM Sensor (R/L)
+const int trig = 12, echo1 = 13, echo2 = 7, echo3 = 8;  //Ultrasonic
+const int Grab = 4;                                     //Claw
+const int ServoMot = 10;                                //Neck Servo
 //
 
 //PIN (Analog)
@@ -24,8 +24,8 @@ unsigned long duration, distance;  //For Ultrasonic functions
 
 void setup() {
   // put your setup code here, to run once:
-  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, RISING);
-  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, RISING);
+  attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(Mot_R2), ISR_L, CHANGE);
   Serial.begin(9600);
 }
 
@@ -44,14 +44,14 @@ void loop() {
   //   Serial.println("Backward");
   //   backward(25);
   //   delay(1000);
-  Serial.println("Left");
-  left();
-  delay(3000);
+  // Serial.println("Left");
+  // left();
+  // delay(3000);
   // Serial.println("Right");
   // right();
   // delay(3000);
-  // uturn();
-  // delay(3000);
+  uturn();
+  delay(3000);
 
 
   // analogWrite(Mot_A1, 255);
@@ -184,31 +184,9 @@ void right() {
 }
 
 void uturn() {
-  int steps = 17;
-  counterL = 0;
-  counterR = 0;
-  while (steps > counterR || steps -1 > counterL) {
-    if (steps > counterR) {
-      analogWrite(Mot_A1, 220);
-      analogWrite(Mot_A2, 0);
-    } else {
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_A2, 0);
-    }
-    if (steps -1> counterL) {
-      analogWrite(Mot_B1, 220);
-      analogWrite(Mot_B2, 0);
-    } else {
-      analogWrite(Mot_B1, 0);
-      analogWrite(Mot_B2, 0);
-    }
-    Serial.println(counterL);
-    Serial.println(counterR);
-  }
-  analogWrite(Mot_A1, 0);
+  analogWrite(Mot_A2, 225);
+  analogWrite(Mot_B2, 240);
+  delay(1300);
   analogWrite(Mot_A2, 0);
-  analogWrite(Mot_B1, 0);
   analogWrite(Mot_B2, 0);
-  counterL = 0;
-  counterR = 0;
 }

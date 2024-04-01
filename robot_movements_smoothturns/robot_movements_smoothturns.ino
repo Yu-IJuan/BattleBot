@@ -44,6 +44,7 @@ int A = 0, B = 0, C = 0, D = 0, E = 0, F = 0;
 int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 unsigned int counterR = 0, counterL = 0;
+float distanceR, distanceL, distanceF;
 bool starting = false, BnWstate = false, ending = false;
 int Black = 0, White = 0;
 
@@ -70,7 +71,7 @@ void setup() {
   pinMode(echoR, INPUT);
 
   pinMode(Grab, OUTPUT);
-
+  Serial.begin(9600);
   pixels.begin();
 
   attachInterrupt(digitalPinToInterrupt(Mot_R1), ISR_R, CHANGE);
@@ -78,8 +79,13 @@ void setup() {
 }
 
 void loop() {
+  ultrasonic("R");
+  ultrasonic("F");  //Checking with different ultrasonic sensors,
+  ultrasonic("L");
+  followRight("Normal");
+
   //   Serial.println("Forward");
-  // forward(4, 4);
+  // forward(6, 6);
   // delay(3000);
   //   Serial.println("Backward");
   // backward();
@@ -90,10 +96,10 @@ void loop() {
   // constforward();
   // delay(5000);
   // Serial.println("Right");
-  right();
-  delay(1500);
-  left();
-  delay(1500);
+  // right();
+  // delay(1500);
+  // left();
+  // delay(1500);
   // uturn();
   // delay(3000);
   // constBackward();
@@ -114,12 +120,10 @@ void loop() {
 
 void ISR_R() {
   counterR++;
-  Serial.print(counterR);
 }
 
 void ISR_L() {
   counterL++;
-  Serial.println(counterL);
 }
 
 void LEDbeforestart() {
@@ -285,6 +289,44 @@ void followLine(String dir) {
   analogWrite(Mot_B1, 0);
 }
 
+void followRight(String dir) {
+  int offsetR = distanceR * 10;
+  if (offsetR <= 94) {
+    LED("WR");
+    Mot_AnaA2 = map(offsetR, 94, 20, 235, 255);
+    Mot_AnaB1 = map(offsetR, 20, 94, 200, 210);
+  } else if (offsetR > 95 && offsetR < 115) {
+    LED("WF");
+    Mot_AnaA2 = map(offsetR, 96, 114, 220, 230);  //R 220, 225
+    Mot_AnaB1 = map(offsetR, 114, 96, 230, 240);  //L 235
+  } else if (offsetR >= 115) {
+    LED("WL");
+    Mot_AnaA2 = map(offsetR, 200, 115, 205, 215);
+    Mot_AnaB1 = map(offsetR, 115, 200, 240, 255);
+  } else {
+    Mot_AnaA2 = 225;
+    Mot_AnaB1 = 235;
+  }
+  if (Mot_AnaA2 >= 255) Mot_AnaA2 = 255;
+  else if (Mot_AnaA2 < 200) Mot_AnaA2 = 100;
+  if (Mot_AnaB1 >= 255) Mot_AnaB1 = 255;
+  else if (Mot_AnaB1 < 200) Mot_AnaB1 = 100;
+  Serial.print("A2: ");
+  Serial.println(Mot_AnaA2);
+  Serial.print("B1: ");
+  Serial.println(Mot_AnaB1);
+  analogWrite(Mot_A2, Mot_AnaA2);
+  analogWrite(Mot_B1, Mot_AnaB1);
+}
+
+void uturn() {
+  analogWrite(Mot_A2, 225);
+  analogWrite(Mot_B2, 240);
+  delay(1400);
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B2, 0);
+}
+
 void readAnalogs() {
   A = analogRead(D1);
   B = analogRead(D3);
@@ -315,8 +357,9 @@ void forward(int stepsR, int stepsL) {
     }
     analogWrite(Mot_A2, Mot_AnaA2);
     analogWrite(Mot_B1, Mot_AnaB1);
+    Serial.print(counterR);
+    Serial.println(counterL);
   }
-  Serial.println();
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
   Mot_AnaA2 = 0;
@@ -361,7 +404,56 @@ void LED(String dir) {
     pixels.setPixelColor(1, pixels.Color(0, 255, 0));
     pixels.setPixelColor(2, pixels.Color(0, 0, 255));
     pixels.setPixelColor(3, pixels.Color(255, 255, 255));
+  } else if (dir == "WL") {
+    pixels.setPixelColor(0, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(1, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(2, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(3, pixels.Color(255, 0, 0));
+  } else if (dir == "WR") {
+    pixels.setPixelColor(0, pixels.Color(255, 255, 255));
+    pixels.setPixelColor(1, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(2, pixels.Color(255, 0, 0));
+    pixels.setPixelColor(3, pixels.Color(255, 255, 255));
+  } else if (dir == "WF") {
+    pixels.setPixelColor(0, pixels.Color(140, 255, 0));
+    pixels.setPixelColor(1, pixels.Color(140, 255, 0));
+    pixels.setPixelColor(2, pixels.Color(140, 255, 0));
+    pixels.setPixelColor(3, pixels.Color(140, 255, 0));
   }
   pixels.show();
-  servo("grab", 30);
+  servo("grab", 50);
+}
+
+void ultrasonic(String dir) {
+  float distanceP = 0, distance = 0, duration = 0;
+  if (dir == "R") {
+    trig = trigR;
+    echo = echoR;
+  } else if (dir == "L") {
+    trig = trigL;
+    echo = echoL;
+  } else if (dir == "F") {
+    trig = trigF;
+    echo = echoF;
+  }
+  float distanceTemp = 0.0;
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(trig, LOW);
+    delay(5);
+    digitalWrite(trig, HIGH);
+    delay(10);
+    digitalWrite(trig, LOW);
+    duration = pulseIn(echo, HIGH);
+    delay(10);
+    distance = (duration * 0.0340 / 2);
+    if (distance >= 400) distance = 1;
+    if (distance == 1) i = i - 1;
+    else {
+      distanceTemp = distanceTemp + distance;
+    }
+  }
+  distanceP = distanceTemp / 3;
+  if (dir == "L") distanceL = distanceP;
+  else if (dir == "R") distanceR = distanceP;
+  else if (dir == "F") distanceF = distanceP;
 }
