@@ -32,7 +32,6 @@
 
 Adafruit_NeoPixel pixels(LEDCount, Neo, NEO_GRB + NEO_KHZ800);
 
-int pulseWidth = 0;
 int echo = 0, trig = 0;
 int A = 0, B = 0, C = 0, D = 0, E = 0, F = 0;
 
@@ -45,13 +44,13 @@ int Mot_AnaA1, Mot_AnaA2, Mot_AnaB1, Mot_AnaB2;
 
 unsigned int counterR = 0, counterL = 0;
 float distanceR, distanceL, distanceF;
-bool starting = false, BnWstate = false, ending = false;
+bool starting = false, ending = false;
 int Black = 0, White = 0;
-bool counted = false;
 unsigned long enddelay = 0;
 unsigned long time = 0;
 unsigned long counttime = 0;
 bool sw = false, coneB = false;
+bool crashReverse = false;
 
 
 void setup() {
@@ -112,6 +111,7 @@ void loop() {
       crashDetect();
       time = millis();
     }
+
     if (millis() >= time + 100) {
       Serial.println("Main");
       ultrasonic("R");
@@ -128,6 +128,7 @@ void loop() {
       } else if (distanceF <= MagicNumber && distanceR <= MagicNumber && distanceL <= MagicNumber) {
         analogWrite(Mot_A2, 0);
         analogWrite(Mot_B1, 0);
+        turncalibrate();
         Serial.println("U");
         uturn();
       }
@@ -140,33 +141,28 @@ void loop() {
 void ISR_R() {
   counterR++;
   if (sw) {
-    counttime = millis();
+    counttime = millis() - 20;
     sw = false;
   }
+  Serial.print(counterR);
 }
 
 void ISR_L() {
   counterL++;
   if (!sw) {
-    counttime = millis();
+    counttime = millis() - 20;
     sw = true;
   }
+  Serial.println(counterL);
 }
 
 bool cone() {
+  int countToStart = 0;
   ultrasonic("F");
-  for (;;) {
+  while (distanceF >= 30 || countToStart < 5) {
     ultrasonic("F");
-    if (distanceF <= 30) {
-      Serial.println()
-      if (!coneB) {
-        time = millis();
-        coneB = true;
-      }
-    }
-    if (time >= millis() + 1000 && distanceF <= 30) {
-      return true;
-    } else coneB = false;
+    if (distanceF > 30) countToStart = 0;
+    else countToStart++;
   }
 }
 
@@ -198,40 +194,22 @@ void calibrateLight() {
   counterR = 0;
   int steps = 0;
   int i = 0;
-  while (i < 5) {
+  bool BnWstate = false;
+  while (i < 4) {
     readAnalogs();
-    int average = (C + D) / 2;
-    while (steps > counterR && steps > counterL) {
-      if (steps > counterR) {
-        analogWrite(Mot_A2, 220);
-      } else {
-        analogWrite(Mot_A2, 0);
-      }
-      if (steps > counterL) {
-        analogWrite(Mot_B1, 255);
-      } else {
-        analogWrite(Mot_B1, 0);
-      }
-    }
-    Serial.println();
-    analogWrite(Mot_A2, 0);
-    analogWrite(Mot_B1, 0);
-    if (B > 700 && C > 700 && D > 700 && E > 700 && !BnWstate) {
+    int average = (A + B + E + F) / 4;
+    analogWrite(Mot_A2, 212);
+    analogWrite(Mot_B1, 225);
+    if (B > 700 && F > 700 && A > 700 && E > 700 && !BnWstate) {
       tempBlack = tempBlack + average;
       BnWstate = !BnWstate;
       i++;
-      counterL = 0;
-      counterR = 0;
-      steps = 12;
-      Serial.println("Temp Black Total: ");
+      Serial.println("Temp black Total: ");
       Serial.println(tempBlack);
-    } else if (B < 600 && C < 600 && D < 600 && E < 600 && BnWstate) {
+    } else if (B < 600 && F < 600 && A < 600 && E < 600 && BnWstate) {
       tempWhite = tempWhite + average;
       BnWstate = !BnWstate;
       i++;
-      counterL = 0;
-      counterR = 0;
-      steps = 12;
       Serial.println("Temp White Total: ");
       Serial.println(tempWhite);
     }
@@ -239,8 +217,11 @@ void calibrateLight() {
 
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
+
+  analogWrite(Mot_A2, 0);
+  analogWrite(Mot_B1, 0);
   White = tempWhite / 2 + 100;
-  Black = tempBlack / 3 - 100;
+  Black = tempBlack / 2 - 100;
   Serial.print("White: ");
   Serial.println(White);
   Serial.print("Black: ");
@@ -248,6 +229,8 @@ void calibrateLight() {
 }
 
 void crashDetect() {
+  Serial.print(counterR);
+  Serial.println(counterL);
   if (millis() >= counttime + 1000) {
     analogWrite(Mot_A1, 0);
     analogWrite(Mot_A2, 0);
@@ -266,9 +249,9 @@ void crashDetect() {
     delay(150);
     analogWrite(Mot_A2, 0);
     analogWrite(Mot_B2, 0);
-    counterR = 0;
-    counterL = 0;
   }
+  Serial.print(counterR);
+  Serial.println(counterL);
 }
 
 void servo(String var, int angle) {
@@ -289,7 +272,7 @@ void followLine(String dir) {
   analogWrite(Mot_B1, 235);  //255
   delay(500);
   Serial.println("followLine");
-  if (dir == "before" || dir == "after") {
+  if (dir == "before") {
     for (;;) {
       readAnalogs();
       if (A > Black && F > Black) break;
@@ -310,34 +293,22 @@ void followLine(String dir) {
         analogWrite(Mot_B1, 255);
       }
     }
-    if (dir == "before") {
-      analogWrite(Mot_A2, 0);
-      analogWrite(Mot_B1, 0);
-      delay(1500);
-      servo("grab", 30);
-      analogWrite(Mot_A2, 225);
-      analogWrite(Mot_B1, 235);
-      delay(370);
-      analogWrite(Mot_A2, 0);
-      analogWrite(Mot_B1, 0);
-      delay(1000);
-      left();
-      delay(1000);
-      forward(6, 6);
-      followLine("during");
-    } else if (dir == "after") {
-      analogWrite(Mot_A2, 0);
-      analogWrite(Mot_B1, 0);
-      delay(1500);
-      servo("grab", 90);
-      analogWrite(Mot_A1, 225);
-      analogWrite(Mot_B2, 255);
-      delay(800);
-      analogWrite(Mot_A1, 0);
-      analogWrite(Mot_B2, 0);
-      for (;;) delay(1000);
-    }
-  } else if ("during") {
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    delay(1500);
+    servo("grab", 30);
+    analogWrite(Mot_A2, 225);
+    analogWrite(Mot_B1, 235);
+    delay(370);
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    delay(1000);
+    left();
+    delay(1000);
+    forward(6, 6);
+    followLine("during");
+
+  } else if (dir == "during") {
     for (;;) {
       readAnalogs();
       if (C > Black && D > Black) {  //Forward
@@ -363,6 +334,48 @@ void followLine(String dir) {
         analogWrite(Mot_B1, 235);
       } else break;
     }
+  } else if (dir == "after") {
+    enddelay = millis();
+    for (;;) {
+      readAnalogs();
+      if (C > Black && D > Black) {  //Forward
+        analogWrite(Mot_A2, 225);
+        analogWrite(Mot_B1, 235);
+      } else if (B > Black && C > Black) {  //Little R
+        analogWrite(Mot_A2, 235);
+        analogWrite(Mot_B1, 235);
+      } else if (D > Black && E > Black) {  //Little L
+        analogWrite(Mot_A2, 215);
+        analogWrite(Mot_B1, 235);
+      } else if (B > Black) {  //Extreme R
+        analogWrite(Mot_A2, 255);
+        analogWrite(Mot_B1, 235);
+      } else if (E > Black) {  //Extreme L
+        analogWrite(Mot_A2, 225);
+        analogWrite(Mot_B1, 255);
+      }
+      if (enddelay >= millis() + 2000) {
+        if (A > Black && F > Black) break;
+      } else {
+        if (A > Black) {
+          analogWrite(Mot_A2, 225);
+          analogWrite(Mot_B1, 0);
+        } else if (F > Black) {
+          analogWrite(Mot_A2, 0);
+          analogWrite(Mot_B1, 235);
+        }
+      }
+    }
+    analogWrite(Mot_A2, 0);
+    analogWrite(Mot_B1, 0);
+    delay(1500);
+    servo("grab", 90);
+    analogWrite(Mot_A1, 225);
+    analogWrite(Mot_B2, 255);
+    delay(800);
+    analogWrite(Mot_A1, 0);
+    analogWrite(Mot_B2, 0);
+    for (;;) delay(1000);
   }
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_B1, 0);
@@ -373,22 +386,23 @@ void followRight() {
   if (offsetR <= 45) {
     LED("WR");
     Mot_AnaA2 = map(offsetR, 45, 20, 250, 255);
-    Mot_AnaB1 = map(offsetR, 20, 45, 100, 160);
+    Mot_AnaB1 = map(offsetR, 20, 45, 150, 180);
   } else if (offsetR <= 85 && offsetR > 45) {
     LED("WR");
     Mot_AnaA2 = map(offsetR, 95, 46, 240, 250);
-    Mot_AnaB1 = map(offsetR, 46, 95, 160, 210);
-  } else if (offsetR > 95 && offsetR < 105) {
+    Mot_AnaB1 = map(offsetR, 46, 95, 180, 210);
+  } else if (offsetR > 95 && offsetR < 125) {
     LED("WF");
-    Mot_AnaA2 = map(offsetR, 96, 104, 207, 217);  //R 220, 225
-    Mot_AnaB1 = map(offsetR, 104, 96, 220, 230);  //L 235
-  } else if (offsetR >= 95 && offsetR < 201) {
+    Mot_AnaA2 = 225;
+    Mot_AnaB1 = 235;
+  } else if (offsetR >= 125 && offsetR < 201) {
     LED("WL");
-    Mot_AnaA2 = map(offsetR, 200, 105, 160, 215);
-    Mot_AnaB1 = map(offsetR, 105, 200, 240, 245);
+    Mot_AnaA2 = map(offsetR, 200, 125, 180, 215);
+    Mot_AnaB1 = map(offsetR, 125, 200, 240, 245);
   } else if (offsetR >= 201) {
-    Mot_AnaA2 = map(offsetR, 250, 201, 100, 160);
-    Mot_AnaB1 = map(offsetR, 201, 250, 245, 255);
+    forward(8, 8);
+    right();
+    forward(22, 22);
   } else {
     Mot_AnaA2 = 225;
     Mot_AnaB1 = 235;
@@ -416,7 +430,8 @@ void forward(int stepsR, int stepsL) {
   Mot_AnaB1 = 0;
   counterL = 0;
   counterR = 0;
-  while (stepsR > counterR && stepsL > counterL) {
+  while (stepsR > counterR && stepsL > counterL) {\
+    crashDetect();
     if (stepsR > counterR) {
       Mot_AnaA2 = 225;
     } else {
@@ -443,7 +458,7 @@ void forward(int stepsR, int stepsL) {
 void left() {
   analogWrite(Mot_A2, 0);
   analogWrite(Mot_A2, 235);
-  delay(1000);
+  delay(800);
   analogWrite(Mot_A2, 0);
 }
 
@@ -455,7 +470,7 @@ void right() {
 }
 
 void uturn() {
-  if (distanceL <= 12) {
+  if (distanceL <= 8) {
     analogWrite(Mot_A1, 225);
     analogWrite(Mot_B1, 250);
     delay(900);
@@ -472,17 +487,17 @@ void uturn() {
 
 void turncalibrate() {
   LED("Detect");
-  if (distanceF <= 30 && distanceF >= 14) {
+  if (distanceF <= 30 && distanceF >= 10) {
     analogWrite(Mot_A2, 225);
     analogWrite(Mot_B1, 235);
     while (distanceF > 14) {
       ultrasonic("F");
       crashDetect();
     }
-  } else if (distanceF < 14) {
+  } else if (distanceF < 10) {
     analogWrite(Mot_A1, 225);
     analogWrite(Mot_B2, 255);
-    while (distanceF < 14) {
+    while (distanceF < 10) {
       ultrasonic("F");
       crashDetect();
     }
@@ -541,7 +556,7 @@ void LED(String dir) {
     }
   }
   pixels.show();
-  servo("grab", 50);
+  servo("grab", 30);
 }
 
 void ultrasonic(String dir) {
